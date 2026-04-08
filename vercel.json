@@ -1,8 +1,5 @@
 {
-  "buildCommand": "python build.py",
-  "functions": {
-    "api/index.py": {
-      "includeFiles": "frontend/**"
-    }
-  }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "fastapi",
+  "buildCommand": "python build.py"
 }
