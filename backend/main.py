@@ -31,6 +31,7 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 import uvicorn
 
 app = FastAPI(title="Global Conflict Intelligence API", version="3.0.0")
@@ -1226,9 +1227,36 @@ async def _build_markets_payload() -> dict:
 # ENDPOINTS
 # ═══════════════════════════════════════════════
 
+def _root_status_payload() -> dict[str, Any]:
+    return {
+        "status": "Global Conflict Intelligence API v3",
+        "frontend": "/index.html",
+        "endpoints": [
+            "/api/news",
+            "/api/markets",
+            "/api/flights",
+            "/api/ships",
+            "/api/rigs",
+            "/api/shortage",
+            "/api/health",
+            "/api/status",
+            "/ws",
+        ],
+    }
+
+
 @app.get("/")
-async def root():
-    return {"status":"Global Conflict Intelligence API v3","endpoints":["/api/news","/api/markets","/api/flights","/api/ships","/api/rigs","/api/shortage","/api/health","/ws"]}
+async def root(request: Request):
+    accept = (request.headers.get("accept") or "").lower()
+    wants_html = "text/html" in accept or "application/xhtml+xml" in accept
+    if os.getenv("VERCEL") and wants_html:
+        return RedirectResponse("/index.html", status_code=307)
+    return _root_status_payload()
+
+
+@app.get("/api/status")
+async def api_status():
+    return _root_status_payload()
 
 @app.get("/api/news")
 async def get_news(limit: int = Query(default=NEWS_BASE_LIMIT, le=150)):
