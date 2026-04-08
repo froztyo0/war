@@ -1,0 +1,7 @@
+backend/.env
+backend/.venv
+backend/__pycache__
+backend/cache.sqlite3
+backend/cache.sqlite3-shm
+backend/cache.sqlite3-wal
+

@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Global Conflict Intelligence</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#080c10;--bg1:#0d1117;--bg2:#161b22;--bg3:#1c2128;--bg4:#21262d;
+  --border:rgba(48,54,61,.85);--border2:rgba(88,166,255,.25);
+  --t1:#e6edf3;--t2:#8b949e;--t3:#484f58;
+  --red:#f85149;--blue:#58a6ff;--amber:#d29922;--green:#3fb950;
+  --purple:#a371f7;--cyan:#39c5cf;--orange:#fb923c;
+  --font:'Segoe UI',system-ui,sans-serif;--r:8px;
+}
+body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* TOPBAR */
+#topbar{height:44px;background:var(--bg1);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 12px;flex-shrink:0;z-index:1000}
+.brand{font-size:12px;font-weight:700;letter-spacing:.08em;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.live-pill{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--green);background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);border-radius:10px;padding:2px 7px;white-space:nowrap}
+.pulse{width:5px;height:5px;border-radius:50%;background:currentColor;animation:blink 1.5s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+#threat-pill{display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;border:1px solid;white-space:nowrap;transition:all .5s}
+#threat-pill.low{background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.4);color:var(--green)}
+#threat-pill.med{background:rgba(210,153,34,.12);border-color:rgba(210,153,34,.4);color:var(--amber)}
+#threat-pill.high{background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.4);color:var(--red)}
+#threat-pill.critical{background:rgba(248,81,73,.25);border-color:var(--red);color:var(--red);animation:blink 1s infinite}
+.ticker-wrap{flex:1;overflow:hidden;position:relative}
+.ticker-wrap::before,.ticker-wrap::after{content:'';position:absolute;top:0;bottom:0;width:30px;z-index:1}
+.ticker-wrap::before{left:0;background:linear-gradient(to right,var(--bg1),transparent)}
+.ticker-wrap::after{right:0;background:linear-gradient(to left,var(--bg1),transparent)}
+.ticker-track{display:flex;animation:scroll 55s linear infinite;width:max-content}
+.ticker-track:hover{animation-play-state:paused}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tick{display:flex;align-items:center;padding:0 16px;border-right:1px solid var(--border);font-size:11px;white-space:nowrap;gap:5px}
+.up{color:var(--green)}.down{color:var(--red)}.neutral{color:var(--t2)}
+.ws-status{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);white-space:nowrap}
+.wsdot{width:5px;height:5px;border-radius:50%;background:var(--t3)}
+.wsdot.connected{background:var(--green)}.wsdot.connecting{background:var(--amber);animation:blink 1s infinite}.wsdot.error{background:var(--red)}.wsdot.polling{background:var(--blue)}
+.icon-btn{background:transparent;border:1px solid var(--border);color:var(--t2);border-radius:var(--r);padding:3px 9px;font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px;transition:all .15s}
+.icon-btn:hover{background:var(--bg4);color:var(--t1);border-color:var(--blue)}
+
+/* ALERT */
+#alert-bar{background:rgba(248,81,73,.15);border-bottom:1px solid rgba(248,81,73,.4);padding:4px 12px;font-size:11px;color:var(--red);display:none;align-items:center;gap:8px;flex-shrink:0}
+#alert-bar.show{display:flex}
+.abadge{background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:.06em}
+
+/* MAIN */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* LEFT SIDEBAR */
+#lsb{width:52px;background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:3px;flex-shrink:0}
+.sbtn{width:38px;min-height:36px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid transparent;color:var(--t2);transition:all .15s;background:transparent;flex-direction:column;font-size:7px;gap:2px;padding:3px 0}
+.sbtn svg{width:15px;height:15px;flex-shrink:0}
+.sbtn:hover,.sbtn.active{background:var(--bg4);border-color:var(--border2);color:var(--blue)}
+.sbsep{width:28px;height:1px;background:var(--border);margin:3px 0}
+
+/* MAP */
+#map-container{flex:1;position:relative;overflow:hidden}
+#map{width:100%;height:100%}
+.mctrl{position:absolute;top:10px;left:10px;z-index:500;display:flex;flex-direction:column;gap:4px}
+.mbtn{background:var(--bg2);border:1px solid var(--border);color:var(--t1);border-radius:var(--r);padding:4px 8px;font-size:10px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.mbtn:hover,.mbtn.active{background:var(--bg4);border-color:var(--blue);color:var(--blue)}
+.mbtn.layer-on{background:rgba(88,166,255,.12);border-color:var(--blue);color:var(--blue)}
+.map-legend{position:absolute;bottom:28px;left:10px;z-index:500;background:rgba(8,12,16,.92);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;min-width:170px}
+.leg-title{font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--t2);margin-bottom:3px}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.leg-sq{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.map-infobox{position:absolute;top:10px;right:10px;z-index:500;background:rgba(8,12,16,.92);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;min-width:165px}
+.mib-title{font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.mib-row{display:flex;justify-content:space-between;gap:10px;font-size:10px;margin-bottom:3px}
+.mib-lbl{color:var(--t2)}.mib-val{color:var(--t1);font-weight:600}
+
+/* RIGHT PANEL */
+#rpanel{width:340px;background:var(--bg1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.ptabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.ptabs::-webkit-scrollbar{height:0}
+.ptab{flex:1;min-width:44px;padding:7px 4px;font-size:9px;color:var(--t2);background:transparent;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;font-family:var(--font);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.ptab:hover{color:var(--t1)}.ptab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-body{display:none;flex:1;overflow:hidden;flex-direction:column}
+.tab-body.active{display:flex}
+
+/* News */
+.frow{display:flex;gap:3px;padding:6px 8px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.frow::-webkit-scrollbar{height:0}
+.fbtn{background:transparent;border:1px solid var(--border);color:var(--t2);border-radius:10px;padding:2px 8px;font-size:10px;cursor:pointer;white-space:nowrap;transition:all .15s}
+.fbtn:hover{border-color:var(--t2);color:var(--t1)}.fbtn.active{background:rgba(88,166,255,.12);border-color:var(--blue);color:var(--blue)}
+#news-feed{flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:5px}
+#news-feed::-webkit-scrollbar{width:3px}
+#news-feed::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.ncard{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;cursor:pointer;transition:all .15s;border-left:3px solid transparent;text-decoration:none;display:block;color:inherit}
+.ncard:hover{background:var(--bg4);border-color:rgba(88,166,255,.3)}
+.ncard.attack{border-left-color:var(--red)}.ncard.diplomacy{border-left-color:var(--blue)}.ncard.military{border-left-color:var(--purple)}.ncard.economy{border-left-color:var(--amber)}
+.cmeta{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;gap:4px}
+.ctag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:1px 5px;border-radius:2px;white-space:nowrap}
+.ctag.attack{background:rgba(248,81,73,.15);color:var(--red)}.ctag.diplomacy{background:rgba(88,166,255,.15);color:var(--blue)}.ctag.military{background:rgba(163,113,247,.15);color:var(--purple)}.ctag.economy{background:rgba(210,153,34,.15);color:var(--amber)}
+.cflag{font-size:12px;line-height:1}.ctime{font-size:9px;color:var(--t3);white-space:nowrap}
+.ctitle{font-size:11px;font-weight:500;color:var(--t1);line-height:1.4;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cfoot{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.csrc{font-size:9px;color:var(--t2)}.cloc{font-size:9px;color:var(--t3)}
+.plat-badge{font-size:9px;font-weight:700;padding:1px 5px;border-radius:2px;white-space:nowrap;flex-shrink:0}
+.plat-badge.reddit{background:rgba(255,69,0,.15);color:#ff6314}
+.plat-badge.twitter{background:rgba(255,255,255,.08);color:#e7e9ea}
+.fbtn-reddit{color:#ff6314!important}.fbtn-reddit.active{background:rgba(255,69,0,.2)!important;border-color:#ff6314!important;color:#ff6314!important}
+.fbtn-twitter{color:#e7e9ea!important}.fbtn-twitter.active{background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.4)!important}
+.loading-msg{padding:20px;text-align:center;color:var(--t2);font-size:12px}
+.spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spn .8s linear infinite;margin:0 auto 8px}
+@keyframes spn{to{transform:rotate(360deg)}}
+
+/* Scrollable panel */
+.scroll-panel{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+.scroll-panel::-webkit-scrollbar{width:3px}
+.scroll-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.section-hdr{font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;padding:5px 2px 3px;border-bottom:1px solid var(--border);margin-bottom:4px}
+
+/* FLIGHTS PANEL */
+.flight-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:all .15s}
+.flight-card:hover{background:var(--bg4)}
+.flight-icon{font-size:16px;flex-shrink:0}
+.flight-info{flex:1;min-width:0}
+.flight-callsign{font-size:11px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:5px}
+.flight-detail{font-size:9px;color:var(--t2);margin-top:1px}
+.flight-flag{font-size:14px}
+.flight-alt{font-size:10px;color:var(--cyan);text-align:right;white-space:nowrap}
+.military-badge{background:rgba(248,81,73,.15);color:var(--red);font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;border:1px solid rgba(248,81,73,.3)}
+
+/* OIL RIGS PANEL */
+.rig-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;cursor:pointer;transition:all .15s}
+.rig-card:hover{background:var(--bg4)}
+.rig-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.rig-name{font-size:11px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:5px}
+.rig-flag{font-size:13px}
+.threat-badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700}
+.threat-high{background:rgba(248,81,73,.15);color:var(--red)}.threat-med{background:rgba(210,153,34,.15);color:var(--amber)}.threat-low{background:rgba(63,185,80,.15);color:var(--green)}
+.rig-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:9px}
+.rig-stat{color:var(--t2);text-align:center}
+.rig-stat strong{display:block;font-size:10px;color:var(--t1)}
+
+/* SHIPS PANEL */
+.ship-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;cursor:pointer;transition:all .15s;border-left:3px solid var(--amber)}
+.ship-card:hover{background:var(--bg4)}
+.ship-card.lng{border-left-color:var(--cyan)}
+.ship-card.crude{border-left-color:var(--orange)}
+.ship-card.products{border-left-color:var(--purple)}
+.ship-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.ship-name{font-size:11px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:5px}
+.ship-flag{font-size:13px}
+.ship-status{font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700}
+.status-transit{background:rgba(88,166,255,.15);color:var(--blue)}
+.status-anchored{background:rgba(210,153,34,.15);color:var(--amber)}
+.status-loading{background:rgba(63,185,80,.15);color:var(--green)}
+.status-diverted{background:rgba(248,81,73,.15);color:var(--red)}
+.ship-detail{font-size:9px;color:var(--t2)}
+.ship-route{font-size:9px;color:var(--t3);margin-top:2px;display:flex;align-items:center;gap:4px}
+
+/* SHORTAGE PREDICTOR */
+.shortage-hero{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:6px}
+.shortage-title{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.price-band{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.price-base{font-size:22px;font-weight:700;color:var(--t1)}
+.price-range{font-size:12px;color:var(--amber)}
+.price-scenario{font-size:9px;color:var(--t3);margin-bottom:8px}
+.scenario-tabs{display:flex;gap:4px;margin-bottom:8px}
+.stab{background:var(--bg4);border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:9px;color:var(--t2);cursor:pointer;transition:all .15s}
+.stab.active{background:rgba(88,166,255,.12);border-color:var(--blue);color:var(--blue)}
+
+.country-impact{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;margin-bottom:5px}
+.ci-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.ci-name{font-size:11px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:5px}
+.ci-flag{font-size:14px}
+.ci-score{font-size:13px;font-weight:700}
+.ci-impact-bar{height:4px;background:var(--bg4);border-radius:2px;margin-bottom:5px}
+.ci-fill{height:100%;border-radius:2px;transition:width .8s}
+.ci-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:9px}
+.ci-cell{color:var(--t2);text-align:center}
+.ci-cell strong{display:block;font-size:10px;color:var(--t1)}
+.ci-note{font-size:9px;color:var(--t3);margin-top:4px;border-top:1px solid var(--border);padding-top:4px;line-height:1.4}
+
+/* STATS / CHARTS */
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:6px}
+.stat-tile{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;text-align:center}
+.st-lbl{font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.st-val{font-size:18px;font-weight:700;color:var(--t1)}
+.st-sub{font-size:8px;color:var(--t3);margin-top:1px}
+.chart-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:6px}
+.chart-title{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.chart-wrap{position:relative;height:110px}
+.loc-bar-row{margin-bottom:5px}
+.loc-bar-hdr{display:flex;justify-content:space-between;font-size:9px;color:var(--t2);margin-bottom:2px}
+.loc-bar-bg{height:4px;background:var(--bg4);border-radius:2px}
+.loc-bar-fill{height:100%;border-radius:2px;transition:width .5s}
+
+/* SOURCES */
+.src-row{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);margin-bottom:4px}
+.src-name{font-size:10px;color:var(--t1)}.src-count{font-size:9px;color:var(--t2)}
+.src-badge{font-size:9px;padding:1px 5px;border-radius:2px;font-weight:700}
+.ok{background:rgba(63,185,80,.15);color:var(--green)}.err{background:rgba(248,81,73,.15);color:var(--red)}.miss{background:rgba(210,153,34,.15);color:var(--amber)}
+
+/* BOTTOM */
+#bottom-bar{height:52px;background:var(--bg1);border-top:1px solid var(--border);display:flex;align-items:stretch;flex-shrink:0;overflow-x:auto}
+#bottom-bar::-webkit-scrollbar{height:0}
+.mkt-cell{flex:1;min-width:95px;display:flex;flex-direction:column;justify-content:center;padding:0 10px;border-right:1px solid var(--border);cursor:pointer;transition:background .15s}
+.mkt-cell:hover{background:var(--bg4)}
+.mkt-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:1px}
+.mkt-price{font-size:13px;font-weight:700;color:var(--t1)}
+.mkt-chg{font-size:9px}
+
+/* Leaflet popup */
+.leaflet-popup-content-wrapper{background:var(--bg3)!important;border:1px solid var(--border)!important;border-radius:var(--r)!important;box-shadow:0 4px 20px rgba(0,0,0,.6)!important}
+.leaflet-popup-tip{background:var(--bg3)!important}
+.leaflet-popup-content{color:var(--t1)!important;font-family:var(--font)!important;margin:8px 12px!important;min-width:180px}
+.pu-type{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+.pu-title{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:4px}
+.pu-row{font-size:10px;color:var(--t2);margin-bottom:2px;display:flex;gap:6px}
+.pu-row strong{color:var(--t1)}
+.pu-link{display:inline-block;margin-top:5px;font-size:10px;color:var(--blue);text-decoration:none}
+.pu-link:hover{text-decoration:underline}
+
+/* event log */
+#event-log{flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:4px}
+#event-log::-webkit-scrollbar{width:3px}
+#event-log::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.elog{display:flex;gap:8px;padding:5px 8px;background:var(--bg3);border-radius:5px;border:1px solid var(--border);animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
+.elog-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.elog-content{flex:1;min-width:0}
+.elog-title{font-size:10px;font-weight:500;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:1px}
+.elog-meta{font-size:9px;color:var(--t3);display:flex;gap:6px}
+
+/* country intel */
+.country-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;margin-bottom:5px}
+.cc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.cc-name{font-size:11px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:5px}
+.cc-flag{font-size:14px}
+.tension-bar{height:4px;background:var(--bg4);border-radius:2px;margin-bottom:4px}
+.tension-fill{height:100%;border-radius:2px;transition:width .8s}
+.cc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.cc-stat{font-size:9px;color:var(--t2);text-align:center}
+.cc-stat strong{display:block;font-size:11px;color:var(--t1)}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="brand">🌐 GLOBAL INTEL</div>
+  <div class="live-pill"><div class="pulse"></div>LIVE</div>
+  <div id="threat-pill" class="med">⚡ THREAT: <span id="threat-text">ELEVATED</span></div>
+  <div class="ticker-wrap"><div class="ticker-track" id="ticker-track"><div class="tick"><span class="neutral">Loading…</span></div></div></div>
+  <div class="ws-status"><div class="wsdot connecting" id="wsdot"></div><span id="ws-lbl">Connecting…</span></div>
+  <button class="icon-btn" onclick="manualRefresh()">↺ Refresh</button>
+</div>
+
+<!-- ALERT -->
+<div id="alert-bar">
+  <span class="abadge">⚠ BREAKING</span>
+  <span id="alert-text"></span>
+  <button onclick="this.parentElement.classList.remove('show')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;margin-left:auto">×</button>
+</div>
+
+<div id="main">
+
+  <!-- LEFT SIDEBAR -->
+  <div id="lsb">
+    <button class="sbtn active" id="sb-news" onclick="setTab('news')" title="News">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm3 1v2h10V3zm0 3v1h10V6zm0 2v1h7V8z"/></svg>
+      NEWS
+    </button>
+    <button class="sbtn" id="sb-flights" onclick="setTab('flights')" title="Live Flights">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M6.428 1.151C6.708.591 7.213 0 8 0s1.292.592 1.572 1.151C9.861 1.72 10 2.35 10 3v3.691l5.17 2.585a1.5 1.5 0 0 1 .83 1.342V12a.5.5 0 0 1-.582.493l-5.507-.918-.375 2.253 1.318 1.318A.5.5 0 0 1 10.5 16h-5a.5.5 0 0 1-.354-.854l1.319-1.318-.376-2.253-5.507.918A.5.5 0 0 1 0 12v-1.382a1.5 1.5 0 0 1 .83-1.342L6 6.691V3c0-.65.14-1.28.428-1.849"/></svg>
+      FLIGHTS
+    </button>
+    <button class="sbtn" id="sb-rigs" onclick="setTab('rigs')" title="Oil Rigs">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8.5 5.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0M3 4.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m10 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0M8 0a1 1 0 0 1 1 1v1h2.5a.5.5 0 0 1 .5.5V4a.5.5 0 0 1-.5.5h-.5v7H11a1 1 0 0 1 1 1v1.5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5V12.5a1 1 0 0 1 1-1h.5v-7H5a.5.5 0 0 1-.5-.5V2.5A.5.5 0 0 1 5 2h2.5V1a1 1 0 0 1 1-1z"/></svg>
+      RIGS
+    </button>
+    <button class="sbtn" id="sb-ships" onclick="setTab('ships')" title="Oil Tankers">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 10.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1H.5a.5.5 0 0 1-.5-.5zm2 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm2 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm2 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm2 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm2 0a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zM.215 11.217a.5.5 0 0 1 .569-.42l3.338.592 2.37-1.467a.5.5 0 0 1 .516 0l2.37 1.467 3.338-.592a.5.5 0 0 1 .214.977l-3.5.62a.5.5 0 0 1-.4-.099L7 11.168l-2.03 1.257a.5.5 0 0 1-.4.1l-3.5-.62a.5.5 0 0 1-.855-.688zM4 6a4 4 0 0 1 8 0v3H4z"/></svg>
+      SHIPS
+    </button>
+    <div class="sbsep"></div>
+    <button class="sbtn" id="sb-shortage" onclick="setTab('shortage')" title="Shortage Model">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2M8 1.918l-.797.161A4 4 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4 4 0 0 0-3.203-3.92zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5 5 0 0 1 13 6c0 .88.32 4.2 1.22 6"/></svg>
+      ALERT
+    </button>
+    <button class="sbtn" id="sb-intel" onclick="setTab('intel')" title="Country Intel">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/></svg>
+      INTEL
+    </button>
+    <button class="sbtn" id="sb-charts" onclick="setTab('charts')" title="Stats">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 11H2v3h2zm5-4H7v7h2zm5-5v12h-2V2zm-3 5H9v7h2z"/></svg>
+      STATS
+    </button>
+    <button class="sbtn" id="sb-events" onclick="setTab('events')" title="Event Log">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M5 1a2 2 0 0 0-2 2v1H2a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zm0 1h6a1 1 0 0 1 1 1v1H4V3a1 1 0 0 1 1-1M2 5h12a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1"/></svg>
+      LOG
+    </button>
+  </div>
+
+  <!-- MAP -->
+  <div id="map-container">
+    <div id="map"></div>
+    <div class="mctrl">
+      <button class="mbtn active" id="mb-all" onclick="setMapFilter('all')">All Events</button>
+      <button class="mbtn" id="mb-attack" onclick="setMapFilter('attack')">Strikes</button>
+      <button class="mbtn layer-on" id="mb-rigs" onclick="toggleLayer('rigs')">🛢 Rigs ON</button>
+      <button class="mbtn layer-on" id="mb-ships" onclick="toggleLayer('ships')">🚢 Ships ON</button>
+      <button class="mbtn layer-on" id="mb-flights" onclick="toggleLayer('flights')">✈ Flights ON</button>
+      <button class="mbtn" id="mb-heat" onclick="toggleHeat()">Heatmap</button>
+      <button class="mbtn" id="mb-zones" onclick="toggleZones()">⚠ Mil Zones</button>
+      <button class="mbtn" id="mb-satellite" onclick="toggleSatellite()">🛰 Satellite</button>
+      <button class="mbtn" id="mb-thermal" onclick="toggleThermal()">🌡 Thermal</button>
+      <button class="mbtn" id="mb-weather" onclick="toggleWeather()">🌧 Weather</button>
+      <button class="mbtn" id="mb-region" onclick="cycleRegion()">Region: Mid-East</button>
+    </div>
+    <div class="map-legend">
+      <div class="leg-title">Map Layers</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>Strike/Attack</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>Diplomacy</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--purple)"></div>Military</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#f0a000"></div>Nuclear Site</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--cyan)"></div>US Base</div>
+      <div class="leg-item"><div class="leg-sq" style="background:#8B4513"></div>Oil Rig</div>
+      <div class="leg-item"><div class="leg-sq" style="background:var(--orange)"></div>Oil Tanker</div>
+      <div class="leg-item"><div class="leg-sq" style="background:var(--green)"></div>Live Flight</div>
+      <div class="leg-item"><div class="leg-sq" style="background:rgba(248,81,73,.3);border:1px dashed var(--red)"></div>Mil Zone</div>
+    </div>
+    <div class="map-infobox">
+      <div class="mib-title">Live Stats</div>
+      <div class="mib-row"><span class="mib-lbl">News articles</span><span class="mib-val" id="stat-total">0</span></div>
+      <div class="mib-row"><span class="mib-lbl">Strike events</span><span class="mib-val" id="stat-attacks" style="color:var(--red)">0</span></div>
+      <div class="mib-row"><span class="mib-lbl">Live flights</span><span class="mib-val" id="stat-flights" style="color:var(--green)">—</span></div>
+      <div class="mib-row"><span class="mib-lbl">Rigs tracked</span><span class="mib-val" id="stat-rigs" style="color:var(--orange)">40</span></div>
+      <div class="mib-row"><span class="mib-lbl">Tankers tracked</span><span class="mib-val" id="stat-ships" style="color:var(--amber)">—</span></div>
+      <div class="mib-row"><span class="mib-lbl">Updated</span><span class="mib-val" id="stat-updated">—</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div id="rpanel">
+    <div class="ptabs">
+      <button class="ptab active" id="pt-news" onclick="setRTab('news')">Feed</button>
+      <button class="ptab" id="pt-flights" onclick="setRTab('flights')">✈ Flights</button>
+      <button class="ptab" id="pt-rigs" onclick="setRTab('rigs')">🛢 Rigs</button>
+      <button class="ptab" id="pt-ships" onclick="setRTab('ships')">🚢 Ships</button>
+      <button class="ptab" id="pt-shortage" onclick="setRTab('shortage')">📉 Shortage</button>
+      <button class="ptab" id="pt-intel" onclick="setRTab('intel')">Intel</button>
+      <button class="ptab" id="pt-charts" onclick="setRTab('charts')">Stats</button>
+      <button class="ptab" id="pt-events" onclick="setRTab('events')">Log</button>
+    </div>
+
+    <!-- NEWS -->
+    <div class="tab-body active" id="tb-news">
+      <div class="frow">
+        <button class="fbtn active" onclick="filterNews('all',this)">All</button>
+        <button class="fbtn" onclick="filterNews('attack',this)">Strikes</button>
+        <button class="fbtn" onclick="filterNews('diplomacy',this)">Diplomacy</button>
+        <button class="fbtn" onclick="filterNews('military',this)">Military</button>
+        <button class="fbtn" onclick="filterNews('economy',this)">Economy</button>
+        <button class="fbtn fbtn-reddit" onclick="filterNews('reddit',this)">Reddit</button>
+        <button class="fbtn fbtn-twitter" onclick="filterNews('twitter',this)">𝕏 Twitter</button>
+      </div>
+      <div id="news-feed"><div class="loading-msg"><div class="spin"></div>Connecting to live feed…</div></div>
+    </div>
+
+    <!-- FLIGHTS -->
+    <div class="tab-body" id="tb-flights">
+      <div style="padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;color:var(--t2);flex-shrink:0">
+        LIVE AIRCRAFT — CONFLICT ZONES &nbsp;|&nbsp; <span id="flight-count" style="color:var(--green)">Loading…</span>
+        &nbsp;<span style="color:var(--t3)">Updates every 60s via OpenSky</span>
+      </div>
+      <div class="scroll-panel" id="flights-list"><div class="loading-msg"><div class="spin"></div>Fetching OpenSky data…</div></div>
+    </div>
+
+    <!-- RIGS -->
+    <div class="tab-body" id="tb-rigs">
+      <div style="padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;color:var(--t2);flex-shrink:0">
+        OIL & GAS PLATFORMS — <span id="rig-count" style="color:var(--orange)">40 platforms</span>
+      </div>
+      <div class="scroll-panel" id="rigs-list"></div>
+    </div>
+
+    <!-- SHIPS -->
+    <div class="tab-body" id="tb-ships">
+      <div style="padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;color:var(--t2);flex-shrink:0">
+        OIL TANKERS &amp; LNG CARRIERS — <span id="ship-count" style="color:var(--amber)">Loading…</span>
+      </div>
+      <div class="scroll-panel" id="ships-list"></div>
+    </div>
+
+    <!-- SHORTAGE PREDICTOR -->
+    <div class="tab-body" id="tb-shortage">
+      <div class="scroll-panel" id="shortage-panel"></div>
+    </div>
+
+    <!-- INTEL -->
+    <div class="tab-body" id="tb-intel">
+      <div class="scroll-panel" id="intel-panel"></div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="tab-body" id="tb-charts">
+      <div class="scroll-panel" id="charts-panel"></div>
+    </div>
+
+    <!-- EVENTS -->
+    <div class="tab-body" id="tb-events">
+      <div style="padding:6px 10px 5px;border-bottom:1px solid var(--border);font-size:9px;color:var(--t2);flex-shrink:0">ROLLING EVENT LOG — <span id="log-count">0</span> EVENTS</div>
+      <div id="event-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM MARKETS BAR -->
+<div id="bottom-bar">
+  <div class="mkt-cell"><div class="mkt-lbl">Bitcoin</div><div class="mkt-price" id="m-btc">—</div><div class="mkt-chg" id="m-btc-c">—</div></div>
+  <div class="mkt-cell"><div class="mkt-lbl">Ethereum</div><div class="mkt-price" id="m-eth">—</div><div class="mkt-chg" id="m-eth-c">—</div></div>
+  <div class="mkt-cell"><div class="mkt-lbl">WTI Crude</div><div class="mkt-price" id="m-wti">—</div><div class="mkt-chg" id="m-wti-c">—</div></div>
+  <div class="mkt-cell"><div class="mkt-lbl">Brent Crude</div><div class="mkt-price" id="m-brent">—</div><div class="mkt-chg" id="m-brent-c">—</div></div>
+  <div class="mkt-cell"><div class="mkt-lbl">Nat Gas</div><div class="mkt-price" id="m-gas">—</div><div class="mkt-chg" id="m-gas-c">—</div></div>
+  <div class="mkt-cell"><div class="mkt-lbl">Gold /oz</div><div class="mkt-price" id="m-gold">—</div><div class="mkt-chg" id="m-gold-c">—</div></div>
+  <div class="mkt-cell"><div class="mkt-lbl">S&P 500 (SPY)</div><div class="mkt-price" id="m-spy">—</div><div class="mkt-chg" id="m-spy-c">—</div></div>
+  <div class="mkt-cell"><div class="mkt-lbl">USD/INR</div><div class="mkt-price" id="m-inr">—</div><div class="mkt-chg neutral">Forex</div></div>
+  <div class="mkt-cell"><div class="mkt-lbl">Hormuz Risk</div><div class="mkt-price" id="m-hormuz" style="font-size:11px">—</div><div class="mkt-chg" id="m-hormuz-c">Chokepoint</div></div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════
+const IS_FILE = window.location.protocol === 'file:';
+const IS_LOCAL_STATIC = ['localhost','127.0.0.1'].includes(window.location.hostname) && window.location.port && window.location.port !== '8000';
+const API_BASE = (IS_FILE || IS_LOCAL_STATIC) ? 'http://localhost:8000' : '';
+const WS_URL = (() => {
+  if (IS_FILE || IS_LOCAL_STATIC) return 'ws://localhost:8000/ws';
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/ws`;
+})();
+
+// ════════════════════════════════════════════════
+// MAP
+// ════════════════════════════════════════════════
+const map = L.map('map',{center:[28,50],zoom:5,zoomControl:false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:19
+}).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
+
+const REGIONS=[
+  {name:'Mid-East',c:[28,50],z:5},{name:'Ukraine',c:[49,32],z:6},
+  {name:'Taiwan Strait',c:[24,122],z:6},{name:'Korean Peninsula',c:[37,127],z:6},
+  {name:'Persian Gulf',c:[26.5,55],z:7},{name:'Red Sea',c:[20,38],z:6},
+  {name:'World',c:[20,20],z:2}
+];
+let regionIdx=0;
+function cycleRegion(){
+  regionIdx=(regionIdx+1)%REGIONS.length;
+  const r=REGIONS[regionIdx];
+  map.flyTo(r.c,r.z,{duration:1.5});
+  document.getElementById('mb-region').textContent=`Region: ${r.name}`;
+}
+
+// Layer groups
+const layerGroups={
+  news: L.layerGroup().addTo(map),
+  rigs: L.layerGroup().addTo(map),
+  ships: L.layerGroup().addTo(map),
+  flights: L.layerGroup().addTo(map),
+  static: L.layerGroup().addTo(map),
+  zones: L.layerGroup(),
+};
+let layerVisible={rigs:true,ships:true,flights:true,zones:false};
+let heatLayer=null,heatOn=false;
+let satelliteLayer=null,satelliteOn=false;
+let thermalLayer=null,thermalOn=false;
+let weatherLayer=null,weatherOn=false;
+
+function toggleLayer(name){
+  layerVisible[name]=!layerVisible[name];
+  const btn=document.getElementById('mb-'+name);
+  if(layerVisible[name]){
+    map.addLayer(layerGroups[name]);
+    btn.classList.add('layer-on');
+    btn.textContent=btn.textContent.replace('OFF','ON');
+  } else {
+    map.removeLayer(layerGroups[name]);
+    btn.classList.remove('layer-on');
+    btn.textContent=btn.textContent.replace('ON','OFF');
+  }
+}
+
+// ════════════════════════════════════════════════
+// COUNTRY FLAGS LOOKUP
+// ════════════════════════════════════════════════
+const FLAG={
+  'IR':'🇮🇷','US':'🇺🇸','SA':'🇸🇦','RU':'🇷🇺','CN':'🇨🇳','IN':'🇮🇳','IQ':'🇮🇶',
+  'AE':'🇦🇪','KW':'🇰🇼','QA':'🇶🇦','OM':'🇴🇲','BH':'🇧🇭','PK':'🇵🇰','TR':'🇹🇷',
+  'IL':'🇮🇱','GB':'🇬🇧','FR':'🇫🇷','DE':'🇩🇪','NO':'🇳🇴','NL':'🇳🇱','GR':'🇬🇷',
+  'SG':'🇸🇬','JP':'🇯🇵','KR':'🇰🇷','MY':'🇲🇾','LR':'🇱🇷','MH':'🇲🇭','PA':'🇵🇦',
+  'BS':'🇧🇸','CY':'🇨🇾','MT':'🇲🇹','PT':'🇵🇹','IT':'🇮🇹','YE':'🇾🇪','NG':'🇳🇬',
+  'DZ':'🇩🇿','LY':'🇱🇾','EG':'🇪🇬','KZ':'🇰🇿','AZ':'🇦🇿','UA':'🇺🇦','BY':'🇧🇾',
+  'VE':'🇻🇪','MX':'🇲🇽','BR':'🇧🇷','AU':'🇦🇺','CA':'🇨🇦','HK':'🇭🇰'
+};
+// ICAO prefix → country code
+const ICAO_CC={
+  'A':'US','C':'CA','D':'DE','E':'SE','F':'FR','G':'GB','H':'HK',
+  'JA':'JP','JB':'JP','B-H':'HK','B-L':'TW','B-M':'MO',
+  '4X':'IL','7T':'DZ','TS':'TN','SU':'EG','EP':'IR','EK':'AM',
+  '4K':'AZ','UR':'UA','RA':'RU','RDPL':'LA','VT':'IN','AP':'PK',
+  'TC':'TR','OD':'LB','OY':'DK','OZ':'DK','LN':'NO','SE':'SE',
+  'PH':'NL','OO':'BE','CS':'PT','EC':'ES','I':'IT','SP':'PL',
+  '9V':'SG','HL':'KR','B-':'CN','RP':'PH','PK':'ID','VH':'AU',
+  'A6':'AE','A7':'QA','A9C':'BH','P4':'AW','ZS':'ZA','9U':'BI'
+};
+function flagFromIcao(icao24){
+  if(!icao24) return '🏳';
+  const s=icao24.toUpperCase();
+  for(const [pfx,cc] of Object.entries(ICAO_CC)){
+    if(s.startsWith(pfx)) return FLAG[cc]||'🏳';
+  }
+  // numeric ICAO ranges
+  const n=parseInt(s,16);
+  if(n>=0xA00000&&n<=0xAFFFFF) return FLAG['US'];
+  if(n>=0xC00000&&n<=0xC3FFFF) return FLAG['CA'];
+  if(n>=0x380000&&n<=0x3BFFFF) return FLAG['DE'];
+  if(n>=0x3C0000&&n<=0x3FFFFF) return FLAG['FR'];
+  if(n>=0x400000&&n<=0x43FFFF) return FLAG['GB'];
+  if(n>=0x480000&&n<=0x4BFFFF) return FLAG['IT'];
+  if(n>=0x700000&&n<=0x73FFFF) return FLAG['RU'];
+  if(n>=0x780000&&n<=0x7BFFFF) return FLAG['CN'];
+  if(n>=0x800000&&n<=0x83FFFF) return FLAG['IN'];
+  if(n>=0x894000&&n<=0x8945FF) return FLAG['JP'];
+  return '🏳';
+}
+function flagFromCountry(cc){ return FLAG[cc]||'🏳'; }
+
+// ════════════════════════════════════════════════
+// STATIC SITES
+// ════════════════════════════════════════════════
+const STATIC_SITES=[
+  {lat:34.88,lon:50.57,label:'Fordow Nuclear Site',type:'nuclear',cc:'IR',info:'Underground enrichment facility'},
+  {lat:33.72,lon:51.73,label:'Natanz Enrichment',type:'nuclear',cc:'IR',info:'Primary enrichment, hit by Stuxnet'},
+  {lat:32.65,lon:51.67,label:'Isfahan Nuclear Center',type:'nuclear',cc:'IR',info:'Uranium conversion facility'},
+  {lat:32.15,lon:48.67,label:'Bushehr NPP',type:'nuclear',cc:'IR',info:'Russian-built nuclear power plant'},
+  {lat:26.20,lon:50.60,label:'US 5th Fleet — Bahrain',type:'us_military',cc:'US',info:'Main US naval command, Persian Gulf'},
+  {lat:24.47,lon:54.37,label:'Al Dhafra AFB — UAE',type:'us_military',cc:'US',info:'F-35 & ISR operations'},
+  {lat:29.38,lon:47.98,label:'Camp Arifjan — Kuwait',type:'us_military',cc:'US',info:'Major US Army logistics hub'},
+  {lat:35.69,lon:51.39,label:'Tehran',type:'capital',cc:'IR',info:'Iranian capital & IRGC HQ'},
+  {lat:15.35,lon:44.21,label:'Sanaa — Houthi HQ',type:'attack',cc:'YE',info:'Ongoing drone & missile launches'},
+  {lat:26.57,lon:56.27,label:'Strait of Hormuz',type:'military',cc:'',info:'~20% world oil — key chokepoint'},
+  {lat:50.45,lon:30.52,label:'Kyiv',type:'attack',cc:'UA',info:'Ukrainian capital — under threat'},
+  {lat:48.46,lon:35.05,label:'Zaporizhzhia NPP',type:'nuclear',cc:'UA',info:'Largest nuclear plant in Europe'},
+  {lat:25.03,lon:121.56,label:'Taipei — Taiwan',type:'military',cc:'TW',info:'Ongoing PRC military pressure'},
+  {lat:37.55,lon:126.99,label:'Seoul',type:'military',cc:'KR',info:'DPRK missile threats'},
+  {lat:39.02,lon:125.75,label:'Pyongyang',type:'attack',cc:'KP',info:'DPRK missile launches'},
+];
+
+const COLORS={attack:'#f85149',diplomacy:'#58a6ff',military:'#a371f7',economy:'#d29922',nuclear:'#f0a000',us_military:'#39c5cf',capital:'#aaa',rig:'#8B4513',ship:'#fb923c',flight:'#3fb950'};
+
+function mkIcon(type,sz=12){
+  const c=COLORS[type]||'#888';
+  return L.divIcon({
+    html:`<svg xmlns="http://www.w3.org/2000/svg" width="${sz+8}" height="${sz+8}" viewBox="0 0 ${sz+8} ${sz+8}"><circle cx="${(sz+8)/2}" cy="${(sz+8)/2}" r="${sz/2+1}" fill="${c}" fill-opacity="0.2"/><circle cx="${(sz+8)/2}" cy="${(sz+8)/2}" r="${sz/2-1}" fill="${c}"/></svg>`,
+    className:'',iconSize:[sz+8,sz+8],iconAnchor:[(sz+8)/2,(sz+8)/2]
+  });
+}
+
+function mkRigIcon(){
+  return L.divIcon({
+    html:`<div style="font-size:14px;line-height:1;filter:drop-shadow(0 0 3px #8B4513)">🛢</div>`,
+    className:'',iconSize:[18,18],iconAnchor:[9,9]
+  });
+}
+function mkShipIcon(cargo){
+  const em=cargo==='LNG'?'🚢':cargo==='Crude'?'🛳':'⛴';
+  return L.divIcon({
+    html:`<div style="font-size:14px;line-height:1;filter:drop-shadow(0 0 3px #fb923c)">${em}</div>`,
+    className:'',iconSize:[18,18],iconAnchor:[9,9]
+  });
+}
+function mkFlightIcon(hdg,isMil){
+  const col=isMil?'#f85149':'#3fb950';
+  const rot=hdg||0;
+  return L.divIcon({
+    html:`<div style="transform:rotate(${rot}deg);font-size:13px;line-height:1;color:${col}">✈</div>`,
+    className:'',iconSize:[16,16],iconAnchor:[8,8]
+  });
+}
+
+function renderStaticSites(){
+  layerGroups.static.clearLayers();
+  STATIC_SITES.forEach(s=>{
+    const c=COLORS[s.type]||'#888';
+    const f=s.cc?flagFromCountry(s.cc):'';
+    L.marker([s.lat,s.lon],{icon:mkIcon(s.type,10)})
+      .bindPopup(`<div class="pu-type" style="color:${c}">${f} ${s.type.replace('_',' ').toUpperCase()}</div><div class="pu-title">${s.label}</div><div class="pu-row">${s.info}</div>`)
+      .addTo(layerGroups.static);
+  });
+}
+
+// ════════════════════════════════════════════════
+// OIL RIGS DATA
+// ════════════════════════════════════════════════
+const OIL_RIGS=[
+  // Persian Gulf
+  {name:'Kharg Island Terminal',lat:29.24,lon:50.33,cc:'IR',operator:'NIOC',field:'Kharg',bpd:'2.4M',threat:'HIGH',region:'Persian Gulf',type:'terminal'},
+  {name:'Lavan Platform Complex',lat:26.81,lon:53.37,cc:'IR',operator:'NIOC',field:'Lavan',bpd:'120K',threat:'HIGH',region:'Persian Gulf',type:'offshore'},
+  {name:'Rostam Platform',lat:27.04,lon:55.18,cc:'IR',operator:'NIOC',field:'Rostam',bpd:'50K',threat:'HIGH',region:'Persian Gulf',type:'offshore'},
+  {name:'Foroozan Field',lat:27.80,lon:52.00,cc:'IR',operator:'NIOC',field:'Foroozan',bpd:'100K',threat:'HIGH',region:'Persian Gulf',type:'offshore'},
+  {name:'Safaniya Oil Field',lat:27.84,lon:48.92,cc:'SA',operator:'Saudi Aramco',field:'Safaniya',bpd:'1.2M',threat:'MED',region:'Persian Gulf',type:'offshore'},
+  {name:'Zuluf Field',lat:27.40,lon:49.70,cc:'SA',operator:'Saudi Aramco',field:'Zuluf',bpd:'500K',threat:'MED',region:'Persian Gulf',type:'offshore'},
+  {name:'Rub al Khali North',lat:21.00,lon:51.00,cc:'SA',operator:'Saudi Aramco',field:'Ghawar',bpd:'3.8M',threat:'LOW',region:'Saudi Arabia',type:'onshore'},
+  {name:'Bu Hasa Field',lat:23.50,lon:53.77,cc:'AE',operator:'ADNOC',field:'Bu Hasa',bpd:'600K',threat:'LOW',region:'UAE',type:'onshore'},
+  {name:'Zakum Field',lat:24.75,lon:53.28,cc:'AE',operator:'ADNOC',field:'Zakum',bpd:'750K',threat:'LOW',region:'UAE',type:'offshore'},
+  {name:'North Field LNG — Qatar',lat:25.50,lon:51.50,cc:'QA',operator:'QatarEnergy',field:'North Field',bpd:'77B cf/d LNG',threat:'LOW',region:'Qatar',type:'offshore'},
+  {name:'Rumaila Field',lat:30.50,lon:47.50,cc:'IQ',operator:'BP/Iraq',field:'Rumaila',bpd:'1.5M',threat:'MED',region:'Iraq',type:'onshore'},
+  {name:'Kirkuk Oil Field',lat:35.47,lon:44.39,cc:'IQ',operator:'Iraq NOC',field:'Kirkuk',bpd:'300K',threat:'HIGH',region:'Iraq',type:'onshore'},
+  {name:'Mina Al Ahmadi',lat:29.07,lon:48.17,cc:'KW',operator:'KPC',field:'Burgan',bpd:'2.9M',threat:'MED',region:'Kuwait',type:'terminal'},
+  // Caspian
+  {name:'Kashagan Field',lat:45.80,lon:53.00,cc:'KZ',operator:'NCOC',field:'Kashagan',bpd:'400K',threat:'LOW',region:'Caspian Sea',type:'offshore'},
+  {name:'ACG (Azeri-Chirag)',lat:40.48,lon:50.40,cc:'AZ',operator:'BP/SOCAR',field:'ACG',bpd:'600K',threat:'LOW',region:'Caspian Sea',type:'offshore'},
+  // Red Sea / East Africa
+  {name:'Ras Tanura Terminal',lat:26.65,lon:50.16,cc:'SA',operator:'Saudi Aramco',field:'Export Terminal',bpd:'6.5M exp.',threat:'MED',region:'Red Sea',type:'terminal'},
+  {name:'Bab el-Mandeb Watch',lat:12.60,lon:43.45,cc:'',operator:'ICS Monitor',field:'Chokepoint',bpd:'~6M transit',threat:'HIGH',region:'Red Sea',type:'chokepoint'},
+  // North Sea
+  {name:'Johan Sverdrup',lat:58.87,lon:2.85,cc:'NO',operator:'Equinor',field:'Johan Sverdrup',bpd:'720K',threat:'LOW',region:'North Sea',type:'offshore'},
+  {name:'Buzzard Field',lat:58.10,lon:1.14,cc:'GB',operator:'Equinor',field:'Buzzard',bpd:'175K',threat:'LOW',region:'North Sea',type:'offshore'},
+  {name:'Forties Pipeline',lat:57.50,lon:0.50,cc:'GB',operator:'BP/INEOS',field:'Forties',bpd:'450K',threat:'LOW',region:'North Sea',type:'pipeline'},
+  {name:'Elgin-Franklin Platform',lat:57.64,lon:2.07,cc:'GB',operator:'TotalEnergies',field:'Elgin',bpd:'130K',threat:'LOW',region:'North Sea',type:'offshore'},
+  {name:'Oseberg Field',lat:60.50,lon:2.78,cc:'NO',operator:'Equinor',field:'Oseberg',bpd:'200K',threat:'LOW',region:'North Sea',type:'offshore'},
+  // West Africa
+  {name:'Bonga Field — Nigeria',lat:3.60,lon:5.45,cc:'NG',operator:'Shell',field:'Bonga',bpd:'225K',threat:'MED',region:'West Africa',type:'FPSO'},
+  {name:'Agbami FPSO',lat:4.20,lon:4.12,cc:'NG',operator:'Chevron',field:'Agbami',bpd:'250K',threat:'MED',region:'West Africa',type:'FPSO'},
+  {name:'Jubilee Field — Ghana',lat:5.00,lon:-2.78,cc:'GH',operator:'Tullow/Aker',field:'Jubilee',bpd:'80K',threat:'LOW',region:'West Africa',type:'FPSO'},
+  // Gulf of Mexico
+  {name:'Thunder Horse PDQ',lat:28.20,lon:-88.20,cc:'US',operator:'BP',field:'Thunder Horse',bpd:'170K',threat:'LOW',region:'Gulf of Mexico',type:'offshore'},
+  {name:'Mars-Ursa Platform',lat:28.17,lon:-89.97,cc:'US',operator:'Shell',field:'Mars-Ursa',bpd:'200K',threat:'LOW',region:'Gulf of Mexico',type:'offshore'},
+  {name:'Perdido Spar',lat:26.13,lon:-94.98,cc:'US',operator:'Shell',field:'Perdido',bpd:'100K',threat:'LOW',region:'Gulf of Mexico',type:'offshore'},
+  // Russia
+  {name:'Sakhalin-2 LNG',lat:51.57,lon:143.47,cc:'RU',operator:'Gazprom',field:'Sakhalin-2',bpd:'9.6M tpa LNG',threat:'MED',region:'Russia Pacific',type:'LNG'},
+  {name:'Prirazlomnoye Arctic',lat:69.23,lon:57.35,cc:'RU',operator:'Gazprom Neft',field:'Prirazlomnoye',bpd:'120K',threat:'LOW',region:'Arctic',type:'offshore'},
+  // Venezuela
+  {name:'Faja Petrolífera',lat:8.10,lon:-63.50,cc:'VE',operator:'PDVSA',field:'Orinoco Belt',bpd:'800K',threat:'LOW',region:'Venezuela',type:'onshore'},
+  // Libya / Algeria
+  {name:'Ras Lanuf Terminal',lat:30.49,lon:18.50,cc:'LY',operator:'NOC Libya',field:'Ras Lanuf',bpd:'220K',threat:'HIGH',region:'Libya',type:'terminal'},
+  {name:'Hassi Messaoud',lat:31.71,lon:5.95,cc:'DZ',operator:'Sonatrach',field:'Hassi Messaoud',bpd:'350K',threat:'LOW',region:'Algeria',type:'onshore'},
+  // East Asia
+  {name:'Bohai Bay Fields',lat:38.50,lon:121.00,cc:'CN',operator:'CNOOC',field:'Bohai',bpd:'600K',threat:'LOW',region:'China',type:'offshore'},
+  {name:'Malampaya Gas — Philippines',lat:11.00,lon:120.00,cc:'PH',operator:'Shell',field:'Malampaya',bpd:'Gas',threat:'LOW',region:'South China Sea',type:'offshore'},
+  {name:'Nam Con Son Basin',lat:9.70,lon:108.50,cc:'VN',operator:'PetroVietnam',field:'Nam Con Son',bpd:'200K',threat:'MED',region:'South China Sea',type:'offshore'},
+  // Canada
+  {name:'Hibernia Platform',lat:46.75,lon:-48.78,cc:'CA',operator:'Husky/ExxonMobil',field:'Hibernia',bpd:'150K',threat:'LOW',region:'Atlantic Canada',type:'offshore'},
+  // Brazil
+  {name:'Lula / Pre-Salt FPSO',lat:-22.50,lon:-40.00,cc:'BR',operator:'Petrobras',field:'Lula',bpd:'900K',threat:'LOW',region:'Brazil',type:'FPSO'},
+  // India
+  {name:'Mumbai High North',lat:19.10,lon:71.50,cc:'IN',operator:'ONGC',field:'Mumbai High',bpd:'300K',threat:'LOW',region:'Arabian Sea',type:'offshore'},
+];
+
+function renderRigsPanel(){
+  const el=document.getElementById('rigs-list');
+  const byRegion={};
+  OIL_RIGS.forEach(r=>{(byRegion[r.region]=byRegion[r.region]||[]).push(r)});
+  el.innerHTML=Object.entries(byRegion).map(([reg,rigs])=>`
+    <div class="section-hdr">${reg}</div>
+    ${rigs.map(r=>`<div class="rig-card" onclick="map.flyTo([${r.lat},${r.lon}],8)">
+      <div class="rig-top">
+        <span class="rig-name"><span class="rig-flag">${flagFromCountry(r.cc)}</span>${r.name}</span>
+        <span class="threat-badge threat-${r.threat.toLowerCase()}">${r.threat}</span>
+      </div>
+      <div class="rig-stats">
+        <div class="rig-stat"><strong>${r.bpd}</strong>Output</div>
+        <div class="rig-stat"><strong>${r.type}</strong>Type</div>
+        <div class="rig-stat"><strong>${r.operator.split('/')[0]}</strong>Operator</div>
+      </div>
+    </div>`).join('')}
+  `).join('');
+  document.getElementById('rig-count').textContent=`${OIL_RIGS.length} platforms`;
+  document.getElementById('stat-rigs').textContent=OIL_RIGS.length;
+  renderRigsOnMap();
+}
+
+function renderRigsOnMap(){
+  layerGroups.rigs.clearLayers();
+  OIL_RIGS.forEach(r=>{
+    const f=flagFromCountry(r.cc);
+    const tc=r.threat==='HIGH'?'var(--red)':r.threat==='MED'?'var(--amber)':'var(--green)';
+    L.marker([r.lat,r.lon],{icon:mkRigIcon()})
+      .bindPopup(`<div class="pu-type" style="color:#8B4513">🛢 OIL RIG / PLATFORM</div>
+        <div class="pu-title">${f} ${r.name}</div>
+        <div class="pu-row"><span>Output:</span><strong>${r.bpd} bpd</strong></div>
+        <div class="pu-row"><span>Operator:</span><strong>${r.operator}</strong></div>
+        <div class="pu-row"><span>Threat:</span><strong style="color:${tc}">${r.threat}</strong></div>
+        <div class="pu-row"><span>Region:</span><strong>${r.region}</strong></div>`)
+      .addTo(layerGroups.rigs);
+  });
+}
+
+// ════════════════════════════════════════════════
+// OIL TANKERS / SHIPS DATA
+// ════════════════════════════════════════════════
+const OIL_TANKERS=[
+  // Active Hormuz transit
+  {name:'Pacific Kestrel',imo:'9887654',flag:'MH',cargo:'Crude',lat:26.80,lon:56.50,status:'TRANSIT',from:'Kharg Island, IR',to:'Jamnagar, IN',dwt:'320K DWT',route:'Hormuz → Arabian Sea',speed:'13.5kn'},
+  {name:'Al Marjan',imo:'9334421',flag:'AE',cargo:'Crude',lat:26.40,lon:57.20,status:'TRANSIT',from:'Jubail, SA',to:'Ningbo, CN',dwt:'280K DWT',route:'Hormuz → Malacca → China',speed:'14.2kn'},
+  {name:'BW Odin',imo:'9712031',flag:'SG',cargo:'LNG',lat:25.90,lon:56.80,status:'TRANSIT',from:'North Field, QA',to:'Futtsu, JP',dwt:'153K m³',route:'Hormuz → Malacca Strait',speed:'18.1kn'},
+  {name:'Seaways Tanker',imo:'9456234',flag:'GR',cargo:'Crude',lat:27.10,lon:55.90,status:'TRANSIT',from:'Basrah, IQ',to:'Rotterdam, NL',dwt:'300K DWT',route:'Hormuz → Suez Canal',speed:'12.9kn'},
+  {name:'Devon Courage',imo:'9334567',flag:'NO',cargo:'Products',lat:26.10,lon:57.50,status:'TRANSIT',from:'Ras Tanura, SA',to:'Mumbai, IN',dwt:'115K DWT',route:'Persian Gulf → West India',speed:'15.0kn'},
+  // Red Sea / Bab el-Mandeb
+  {name:'Marlin Luanda',imo:'9678432',flag:'LR',cargo:'Crude',lat:14.50,lon:42.50,status:'DIVERTED',from:'Ras Tanura, SA',to:'Rotterdam, NL',dwt:'310K DWT',route:'Diverted: Cape of Good Hope',speed:'14.8kn',note:'Houthi threat — Cape re-route'},
+  {name:'SC Taipei',imo:'9455123',flag:'PA',cargo:'Crude',lat:13.00,lon:44.20,status:'DIVERTED',from:'Basrah, IQ',to:'South Korea',dwt:'290K DWT',route:'Diverted: Cape of Good Hope',speed:'13.2kn',note:'Houthi attack risk — re-routed'},
+  {name:'Hafnia Andromeda',imo:'9341872',flag:'SG',cargo:'Products',lat:15.80,lon:41.30,status:'TRANSIT',from:'Jubail, SA',to:'Rotterdam, NL',dwt:'75K DWT',route:'Red Sea → Suez',speed:'14.0kn'},
+  // Mediterranean / Suez
+  {name:'New Hellas',imo:'9512345',flag:'GR',cargo:'Crude',lat:29.50,lon:32.30,status:'TRANSIT',from:'Ras Tanura, SA',to:'Augusta, IT',dwt:'260K DWT',route:'Suez Canal → Mediterranean',speed:'13.8kn'},
+  {name:'Ploiesti Star',imo:'9234561',flag:'CY',cargo:'Crude',lat:31.20,lon:32.60,status:'TRANSIT',from:'Novorossiysk, RU',to:'Trieste, IT',dwt:'140K DWT',route:'Black Sea → Bosphorus → Med',speed:'11.5kn'},
+  // Asia
+  {name:'Formosa One',imo:'9456789',flag:'PA',cargo:'Crude',lat:25.00,lon:121.20,status:'ANCHORED',from:'Kuwait',to:'Taichung, TW',dwt:'290K DWT',route:'Persian Gulf → Taiwan',speed:'0kn',note:'Awaiting berth'},
+  {name:'Energy Sincerity',imo:'9678901',flag:'HK',cargo:'Crude',lat:31.20,lon:122.40,status:'LOADING',from:'Dalian, CN',to:'',dwt:'320K DWT',route:'Loading at Dalian SPM',speed:'0kn'},
+  {name:'LNG Fukurokuju',imo:'9123456',flag:'JP',cargo:'LNG',lat:34.68,lon:135.20,status:'TRANSIT',from:'Sabine Pass, US',to:'Futtsu, JP',dwt:'145K m³',route:'Pacific LNG route',speed:'17.9kn'},
+  // India
+  {name:'Maharshi Valmiki',imo:'9567890',flag:'IN',cargo:'Crude',lat:18.90,lon:72.80,status:'LOADING',from:'Mundra',to:'Arabian Gulf',dwt:'160K DWT',route:'Arabian Sea loop',speed:'0kn'},
+  // Russia shadow fleet
+  {name:'Ns Champion',imo:'9234112',flag:'PA',cargo:'Crude',lat:57.00,lon:20.00,status:'TRANSIT',from:'Novorossiysk, RU',to:'Baniyas, SY',dwt:'130K DWT',route:'Baltic → Turkey shadow route',speed:'10.2kn',note:'Shadow fleet vessel — Russia crude'},
+  {name:'Andromeda Star',imo:'9345678',flag:'BS',cargo:'Crude',lat:52.00,lon:3.50,status:'TRANSIT',from:'Primorsk, RU',to:'India',dwt:'140K DWT',route:'Baltic exit → Cape Horn',speed:'12.1kn',note:'Shadow fleet — sanctioned'},
+  // LNG
+  {name:'Arctic Lady',imo:'9287654',flag:'NO',cargo:'LNG',lat:70.00,lon:28.00,status:'TRANSIT',from:'Hammerfest, NO',to:'Rotterdam, NL',dwt:'140K m³',route:'Norwegian Arctic route',speed:'17.5kn'},
+  {name:'Everett',imo:'9456000',flag:'MH',cargo:'LNG',lat:42.37,lon:-71.05,status:'LOADING',from:'Everett Terminal, US',to:'',dwt:'138K m³',route:'NE US → Europe',speed:'0kn'},
+];
+
+let tankerData=[];
+
+async function fetchShips(){
+  try{
+    const r=await fetch(`${API_BASE}/api/ships`,{signal:AbortSignal.timeout(10000)});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d=await r.json();
+    tankerData=d.tankers||[];
+    renderShipsPanel();
+    renderShipsOnMap();
+  }catch(e){
+    console.warn('Ships fetch error:',e);
+    if(!tankerData.length) tankerData=OIL_TANKERS;
+    renderShipsPanel();
+    renderShipsOnMap();
+  }
+}
+
+function updateShips(data){
+  if(data.tankers&&data.tankers.length){ tankerData=data.tankers; renderShipsPanel(); renderShipsOnMap(); }
+}
+
+function renderShipsPanel(){
+  const ships=tankerData.length?tankerData:OIL_TANKERS;
+  const el=document.getElementById('ships-list');
+  const shadow=ships.filter(s=>s.is_shadow||s.shadow||s.note?.toLowerCase().includes('shadow'));
+  el.innerHTML=(shadow.length?`<div style="padding:4px 8px 2px;font-size:9px;color:var(--red);border-bottom:1px solid rgba(248,81,73,.2)">⚠ SHADOW FLEET: ${shadow.length} vessel(s) detected</div>`:'')+
+  ships.map(s=>`
+    <div class="ship-card ${(s.cargo||'').toLowerCase()}" onclick="map.flyTo([${s.lat},${s.lon}],8)">
+      <div class="ship-top">
+        <span class="ship-name"><span class="ship-flag">${flagFromCountry(s.flag||s.flag_emoji||'')}</span>${s.name}</span>
+        <span class="ship-status status-${(s.status||'').toLowerCase()}">${s.status}</span>
+      </div>
+      <div class="ship-detail">${s.cargo} · ${s.dwt||s.dwt_label||''} · ${s.speed}</div>
+      <div class="ship-route">
+        <span>${s.from||''}</span><span style="color:var(--t3)">→</span><span>${s.to||'TBD'}</span>
+      </div>
+      ${s.note?`<div style="font-size:9px;color:var(--red);margin-top:2px">⚠ ${s.note}</div>`:''}
+    </div>`).join('');
+  document.getElementById('ship-count').textContent=`${ships.length} vessels`;
+  document.getElementById('stat-ships').textContent=ships.length;
+}
+
+function renderShipsOnMap(){
+  const ships=tankerData.length?tankerData:OIL_TANKERS;
+  layerGroups.ships.clearLayers();
+  ships.forEach(s=>{
+    const f=flagFromCountry(s.flag||'');
+    const sc=s.status==='DIVERTED'?'var(--red)':s.status==='TRANSIT'?'var(--blue)':s.status==='ANCHORED'?'var(--amber)':'var(--green)';
+    const shadowBadge=(s.is_shadow||s.shadow)?'<div style="font-size:10px;color:var(--red);margin-top:4px">🚩 SHADOW FLEET VESSEL</div>':'';
+    L.marker([s.lat,s.lon],{icon:mkShipIcon(s.cargo)})
+      .bindPopup(`<div class="pu-type" style="color:var(--orange)">🚢 ${s.cargo} VESSEL</div>
+        <div class="pu-title">${f} ${s.name}</div>
+        <div class="pu-row"><span>IMO:</span><strong>${s.imo}</strong></div>
+        <div class="pu-row"><span>Status:</span><strong style="color:${sc}">${s.status}</strong></div>
+        <div class="pu-row"><span>Route:</span><strong>${s.route}</strong></div>
+        <div class="pu-row"><span>Speed:</span><strong>${s.speed}</strong></div>
+        <div class="pu-row"><span>Capacity:</span><strong>${s.dwt||s.dwt_label||''}</strong></div>
+        ${shadowBadge}
+        ${s.note?`<div style="font-size:10px;color:var(--red);margin-top:4px">⚠ ${s.note}</div>`:''}`)
+      .addTo(layerGroups.ships);
+  });
+}
+
+// ════════════════════════════════════════════════
+// LIVE FLIGHTS — OpenSky Network (free, no key)
+// ════════════════════════════════════════════════
+const FLIGHT_ZONES=[
+  {name:'Persian Gulf',lamin:22,lomin:48,lamax:30,lomax:60},
+  {name:'Red Sea',lamin:12,lomin:32,lamax:30,lomax:45},
+  {name:'Black Sea',lamin:41,lomin:27,lamax:47,lomax:41},
+  {name:'Taiwan Strait',lamin:22,lomin:118,lamax:28,lomax:124},
+];
+const MIL_CALLSIGNS=['RCH','ASY','CNV','DUKE','ROCKY','REACH','HOMER','EVAC','JAKE','PACK','CHAOS','LOBO','UAVGH','FORTE'];
+let flightData=[];
+let flightFetchInt=null;
+
+async function fetchFlights(){
+  try{
+    const r=await fetch(`${API_BASE}/api/flights`,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d=await r.json();
+    flightData=(d.flights||[]).map(f=>({...f,isMil:f.is_military}));
+    renderFlightsPanel();
+    renderFlightsOnMap();
+    document.getElementById('stat-flights').textContent=flightData.length;
+  }catch(e){
+    console.warn('Flights fetch error:',e);
+    document.getElementById('flights-list').innerHTML='<div class="loading-msg" style="color:var(--t2)">No flights detected in zones, or OpenSky rate limited. Retrying in 60s…</div>';
+    document.getElementById('stat-flights').textContent='—';
+  }
+}
+
+function renderFlightsOnMap(){
+  layerGroups.flights.clearLayers();
+  flightData.forEach(f=>{
+    L.marker([f.lat,f.lon],{icon:mkFlightIcon(f.heading,f.isMil)})
+      .bindPopup(`<div class="pu-type" style="color:${f.isMil?'var(--red)':'var(--green)'}">✈ ${f.isMil?'MILITARY/SPECIAL':'CIVIL AIRCRAFT'}</div>
+        <div class="pu-title">${f.flag} ${f.callsign}</div>
+        <div class="pu-row"><span>ICAO24:</span><strong>${f.icao24}</strong></div>
+        <div class="pu-row"><span>Altitude:</span><strong>${f.altitude.toLocaleString()} ft</strong></div>
+        <div class="pu-row"><span>Speed:</span><strong>${f.speed} kts</strong></div>
+        <div class="pu-row"><span>Heading:</span><strong>${f.heading}°</strong></div>
+        <div class="pu-row"><span>Zone:</span><strong>${f.zone}</strong></div>
+        ${f.squawk?`<div class="pu-row"><span>Squawk:</span><strong>${f.squawk}</strong></div>`:''}`)
+      .addTo(layerGroups.flights);
+  });
+}
+
+function renderFlightsPanel(){
+  const el=document.getElementById('flights-list');
+  const count=document.getElementById('flight-count');
+  if(!flightData.length){
+    el.innerHTML='<div class="loading-msg" style="color:var(--t2)">No flights detected in zones, or OpenSky rate limited. Retrying…</div>';
+    count.textContent='0 aircraft';
+    return;
+  }
+  count.textContent=`${flightData.length} aircraft tracked`;
+  // sort: military first, then by altitude desc
+  const sorted=[...flightData].sort((a,b)=>(b.isMil-a.isMil)||(b.altitude-a.altitude));
+  el.innerHTML=sorted.map(f=>`
+    <div class="flight-card" onclick="map.flyTo([${f.lat},${f.lon}],9)">
+      <div class="flight-icon">${f.isMil?'🚁':'✈'}</div>
+      <div class="flight-info">
+        <div class="flight-callsign">
+          <span class="flight-flag">${f.flag}</span>${f.callsign}
+          ${f.isMil?'<span class="military-badge">MIL</span>':''}
+        </div>
+        <div class="flight-detail">${f.zone} · Alt: ${f.altitude.toLocaleString()}ft · ${f.speed}kts · Hdg:${f.heading}°</div>
+      </div>
+      <div class="flight-alt">${f.squawk?`SQK:${f.squawk}`:''}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// MILITARY HOTSPOT ZONES
+// ════════════════════════════════════════════════
+const MIL_ZONES=[
+  {name:'Strait of Hormuz',color:'#f85149',coords:[[25.8,56.1],[26.2,56.8],[26.9,57.0],[27.0,56.5],[26.8,55.8],[26.2,55.5],[25.8,56.1]],desc:'~21M bpd transit — world\'s most critical oil chokepoint. Iran can mine or blockade.'},
+  {name:'Bab el-Mandeb',color:'#f85149',coords:[[11.5,43.0],[12.0,43.4],[13.0,43.8],[13.5,43.4],[13.0,42.8],[12.0,42.6],[11.5,43.0]],desc:'Houthi drone/missile zone. ~6M bpd + Suez Canal traffic. Red Sea entry.'},
+  {name:'Taiwan Strait',color:'#d29922',coords:[[22.0,119.5],[22.0,121.0],[28.0,121.5],[28.0,120.0],[22.0,119.5]],desc:'PLA military exercises ongoing. Contested airspace and sea lanes. Critical semiconductor supply chain.'},
+  {name:'South China Sea (Spratly Islands)',color:'#d29922',coords:[[7.0,111.0],[7.0,118.0],[12.0,118.0],[12.0,111.0],[7.0,111.0]],desc:'Disputed islands — China, Vietnam, Philippines, Malaysia all claim. PLA artificial island bases.'},
+  {name:'Korean Peninsula DMZ',color:'#a371f7',coords:[[37.8,124.5],[37.8,129.5],[38.6,129.5],[38.6,124.5],[37.8,124.5]],desc:'DPRK missile launch zones. One of the world\'s most heavily fortified borders.'},
+  {name:'Ukraine Frontline',color:'#f85149',coords:[[46.5,31.0],[46.5,37.5],[51.5,37.5],[51.5,31.0],[46.5,31.0]],desc:'Active war zone. Russian occupation of southern/eastern Ukraine. Zaporizhzhia NPP at risk.'},
+  {name:'Eastern Mediterranean (Lebanon/Syria)',color:'#d29922',coords:[[31.5,34.0],[31.5,37.5],[34.5,37.5],[34.5,34.0],[31.5,34.0]],desc:'Israeli operations, Hezbollah activity, Russian naval presence in Tartus (Syria).'},
+  {name:'Black Sea',color:'#a371f7',coords:[[40.8,28.0],[40.8,41.0],[46.5,41.0],[46.5,28.0],[40.8,28.0]],desc:'Russian naval blockade of Ukrainian ports. Drone boat attacks on Russian fleet. Grain corridor tensions.'},
+  {name:'Red Sea (Houthi Threat Zone)',color:'#f85149',coords:[[11.5,42.5],[11.5,45.5],[22.0,45.5],[22.0,42.5],[11.5,42.5]],desc:'Active Houthi attack corridor. 100+ commercial ships diverted via Cape of Good Hope since Oct 2023.'},
+];
+
+function renderZones(){
+  layerGroups.zones.clearLayers();
+  MIL_ZONES.forEach(z=>{
+    const poly=L.polygon(z.coords,{color:z.color,fillColor:z.color,fillOpacity:0.12,weight:1.5,dashArray:'5,5',opacity:0.7});
+    poly.bindPopup(`<div class="pu-type" style="color:${z.color}">⚠ MILITARY HOTSPOT ZONE</div><div class="pu-title">${z.name}</div><div style="font-size:10px;color:var(--t2);margin-top:4px">${z.desc}</div>`);
+    poly.addTo(layerGroups.zones);
+    // Add zone label
+    const center=poly.getBounds().getCenter();
+    L.marker(center,{icon:L.divIcon({html:`<div style="font-size:9px;font-weight:700;color:${z.color};text-shadow:0 0 4px #000;white-space:nowrap;pointer-events:none">${z.name}</div>`,className:'',iconAnchor:[0,6]})}).addTo(layerGroups.zones);
+  });
+}
+
+function toggleZones(){
+  layerVisible.zones=!layerVisible.zones;
+  const btn=document.getElementById('mb-zones');
+  if(layerVisible.zones){
+    renderZones();
+    map.addLayer(layerGroups.zones);
+    btn.classList.add('layer-on');
+    btn.textContent='⚠ Zones ON';
+  } else {
+    map.removeLayer(layerGroups.zones);
+    btn.classList.remove('layer-on');
+    btn.textContent='⚠ Mil Zones';
+  }
+}
+
+// ════════════════════════════════════════════════
+// SATELLITE / THERMAL / WEATHER OVERLAYS
+// NASA GIBS (free, no key) + RainViewer (free, no key)
+// ════════════════════════════════════════════════
+function gibsDate(){
+  const d=new Date();
+  d.setDate(d.getDate()-1); // GIBS tiles available for yesterday
+  return d.toISOString().slice(0,10);
+}
+
+function toggleSatellite(){
+  satelliteOn=!satelliteOn;
+  const btn=document.getElementById('mb-satellite');
+  if(satelliteOn){
+    const date=gibsDate();
+    satelliteLayer=L.tileLayer(
+      `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/${date}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`,
+      {opacity:0.7,attribution:'NASA GIBS',maxZoom:9,errorTileUrl:''}
+    ).addTo(map);
+    btn.classList.add('layer-on'); btn.textContent='🛰 Satellite ON';
+  } else {
+    if(satelliteLayer){map.removeLayer(satelliteLayer);satelliteLayer=null;}
+    btn.classList.remove('layer-on'); btn.textContent='🛰 Satellite';
+  }
+}
+
+function toggleThermal(){
+  thermalOn=!thermalOn;
+  const btn=document.getElementById('mb-thermal');
+  if(thermalOn){
+    const date=gibsDate();
+    // VIIRS active fires (thermal hotspots) — shows fires/heat anomalies globally
+    thermalLayer=L.tileLayer(
+      `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_Fires_375m_Day/default/${date}/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png`,
+      {opacity:0.85,attribution:'NASA FIRMS/GIBS',maxZoom:8,errorTileUrl:''}
+    ).addTo(map);
+    btn.classList.add('layer-on'); btn.textContent='🌡 Thermal ON';
+  } else {
+    if(thermalLayer){map.removeLayer(thermalLayer);thermalLayer=null;}
+    btn.classList.remove('layer-on'); btn.textContent='🌡 Thermal';
+  }
+}
+
+function toggleWeather(){
+  weatherOn=!weatherOn;
+  const btn=document.getElementById('mb-weather');
+  if(weatherOn){
+    // RainViewer — free real-time rain radar, no API key required
+    fetch('https://api.rainviewer.com/public/weather-maps.json')
+      .then(r=>r.json())
+      .then(data=>{
+        const frames=data.radar&&data.radar.past;
+        if(!frames||!frames.length) throw new Error('no frames');
+        const latest=frames[frames.length-1].path;
+        weatherLayer=L.tileLayer(
+          `https://tilecache.rainviewer.com${latest}/256/{z}/{x}/{y}/4/1_1.png`,
+          {opacity:0.6,attribution:'RainViewer',maxZoom:12}
+        ).addTo(map);
+        btn.classList.add('layer-on'); btn.textContent='🌧 Weather ON';
+      })
+      .catch(e=>{
+        console.warn('RainViewer error:',e);
+        btn.classList.remove('layer-on'); btn.textContent='🌧 Weather'; weatherOn=false;
+      });
+  } else {
+    if(weatherLayer){map.removeLayer(weatherLayer);weatherLayer=null;}
+    btn.classList.remove('layer-on'); btn.textContent='🌧 Weather';
+  }
+}
+
+// ════════════════════════════════════════════════
+// SHORTAGE PREDICTOR MODEL
+// ════════════════════════════════════════════════
+const SHORTAGE_COUNTRIES=[
+  {name:'India',cc:'IN',import_dep:85,reserve_days:60,hormuz_dep:60,redsea_dep:40,altroute:1,note:'World\'s 3rd largest importer — heavy Hormuz exposure. SPR < 60 days. Refinery utilization near 100%.'},
+  {name:'Japan',cc:'JP',import_dep:98,reserve_days:180,hormuz_dep:80,redsea_dep:10,altroute:0,note:'Highest Hormuz dependency globally. IEA member — 180-day mandatory reserve provides buffer.'},
+  {name:'China',cc:'CN',import_dep:70,reserve_days:90,hormuz_dep:55,redsea_dep:30,altroute:2,note:'Diversified via Russia pipeline + ESPO route. Large SPR. But Hormuz still 55% of sea imports.'},
+  {name:'South Korea',cc:'KR',import_dep:98,reserve_days:120,hormuz_dep:72,redsea_dep:15,altroute:0,note:'Extreme Hormuz dependency. 4 months reserve. 3 major refineries — Ulsan most at risk.'},
+  {name:'Germany',cc:'DE',import_dep:95,reserve_days:90,hormuz_dep:10,redsea_dep:35,altroute:2,note:'Red Sea disruption hits LNG shipments. Can pivot to pipeline Norway/Russia alternatives. Moderate risk.'},
+  {name:'Italy',cc:'IT',import_dep:90,reserve_days:95,hormuz_dep:15,redsea_dep:45,altroute:1,note:'Heavy Red Sea / Suez dependency for Libyan + Gulf crude. ENI active in affected zones.'},
+  {name:'Pakistan',cc:'PK',import_dep:80,reserve_days:20,hormuz_dep:70,redsea_dep:50,altroute:0,note:'Critical exposure — only 20 days reserve. No alternative routes. Already in energy crisis.'},
+  {name:'Turkey',cc:'TR',import_dep:93,reserve_deps:70,hormuz_dep:30,redsea_dep:40,altroute:1,note:'Bosphorus route for Russian crude. Red Sea matters for Gulf imports. Moderate resilience.'},
+  {name:'France',cc:'FR',import_dep:98,reserve_days:115,hormuz_dep:12,redsea_dep:30,altroute:2,note:'IEA member, West Africa + North Sea alternatives. LNG import capacity growing. Low-medium risk.'},
+  {name:'USA',cc:'US',import_dep:20,reserve_days:700,hormuz_dep:5,redsea_dep:8,altroute:3,note:'Near energy independent. SPR = 700M barrels. Shale output buffer. Low direct impact.'},
+  {name:'UK',cc:'GB',import_dep:60,reserve_days:100,hormuz_dep:8,redsea_dep:20,altroute:2,note:'North Sea domestic production + Norway pipeline. IEA member. Lower vulnerability.'},
+  {name:'Bangladesh',cc:'BD',import_dep:95,reserve_days:15,hormuz_dep:65,redsea_dep:60,altroute:0,note:'Extremely vulnerable. Low reserve, no pipeline alternatives, dependent on spot LNG market.'},
+  {name:'Singapore',cc:'SG',import_dep:100,reserve_days:90,hormuz_dep:75,redsea_dep:20,altroute:1,note:'Regional refining hub — Hormuz disruption is direct. Malacca Strait critical. High impact.'},
+  {name:'Saudi Arabia',cc:'SA',import_dep:0,reserve_days:9999,hormuz_dep:-1,redsea_dep:-1,altroute:3,note:'Major exporter. Hormuz closure directly impacts revenue — Yanbu pipeline is partial alternative.'},
+  {name:'Iran',cc:'IR',import_dep:5,reserve_days:9999,hormuz_dep:-1,redsea_dep:-1,altroute:3,note:'Can close Hormuz as leverage. Domestic refining. Net exporter under sanctions.'},
+];
+
+// Scenario multipliers
+const SCENARIOS={
+  base:{label:'Base Case',desc:'Hormuz harassment only, no closure. +10-15% freight premium.',wti_low:78,wti_high:92,brent_low:82,brent_high:98,hormuz_mult:0.3,redsea_mult:0.2},
+  partial:{label:'Partial Closure',desc:'1-week Hormuz disruption. ~3M bpd offline.',wti_low:95,wti_high:120,brent_low:100,brent_high:130,hormuz_mult:0.7,redsea_mult:0.4},
+  full:{label:'Full Closure 30d',desc:'Full Hormuz closure. ~17M bpd offline. 1973-style crisis.',wti_low:140,wti_high:200,brent_low:150,brent_high:220,hormuz_mult:1.0,redsea_mult:0.6},
+};
+let activeScenario='base';
+
+function calcImpact(c,sc){
+  const s=SCENARIOS[sc];
+  if(c.import_dep===0) return {score:5,color:'var(--green)',label:'MINIMAL'};
+  const hi=s.hormuz_mult*(c.hormuz_dep/100);
+  const ri=s.redsea_mult*(c.redsea_dep/100);
+  const di=(c.import_dep/100);
+  const rb=1-(c.reserve_days/365);
+  const al=1-(c.altroute/3);
+  const raw=(hi*0.40+ri*0.15+di*0.20+rb*0.15+al*0.10)*100;
+  const score=Math.min(99,Math.max(1,Math.round(raw)));
+  const color=score>70?'var(--red)':score>45?'var(--amber)':score>20?'var(--blue)':'var(--green)';
+  const label=score>70?'CRITICAL':score>45?'HIGH':score>20?'MODERATE':'LOW';
+  const disruption=Math.round((c.hormuz_dep*s.hormuz_mult+c.redsea_dep*s.redsea_mult)*c.import_dep/10000*100);
+  return{score,color,label,disruption:Math.min(disruption,95)};
+}
+
+function renderShortagePanel(){
+  const sc=SCENARIOS[activeScenario];
+  const el=document.getElementById('shortage-panel');
+  el.innerHTML=`
+    <div class="shortage-hero">
+      <div class="shortage-title">⚡ Oil Shortage Predictor — Conflict Scenario Model</div>
+      <div class="price-band">
+        <span class="price-base">$${sc.wti_low}–$${sc.wti_high}</span>
+        <span class="price-range">WTI forecast</span>
+      </div>
+      <div class="price-band" style="margin-top:-4px">
+        <span style="font-size:14px;font-weight:600;color:var(--amber)">$${sc.brent_low}–$${sc.brent_high}</span>
+        <span class="price-range">Brent forecast</span>
+      </div>
+      <div class="price-scenario">${sc.desc}</div>
+      <div class="scenario-tabs">
+        ${Object.entries(SCENARIOS).map(([k,v])=>`<button class="stab ${activeScenario===k?'active':''}" onclick="setScenario('${k}')">${v.label}</button>`).join('')}
+      </div>
+      <div style="font-size:9px;color:var(--t3);line-height:1.5">Model factors: Hormuz dependency × scenario severity + Red Sea exposure + import dependency + strategic reserve depth + alternative route availability. Not financial advice.</div>
+    </div>
+    ${SHORTAGE_COUNTRIES.map(c=>{
+      const imp=calcImpact(c,activeScenario);
+      return`<div class="country-impact">
+        <div class="ci-header">
+          <span class="ci-name"><span class="ci-flag">${flagFromCountry(c.cc)}</span>${c.name}</span>
+          <span class="ci-score" style="color:${imp.color}">${imp.score} / <span style="font-size:10px">${imp.label}</span></span>
+        </div>
+        <div class="ci-impact-bar"><div class="ci-fill" style="width:${imp.score}%;background:${imp.color}"></div></div>
+        <div class="ci-grid">
+          <div class="ci-cell"><strong>${c.import_dep}%</strong>Import dep.</div>
+          <div class="ci-cell"><strong>${c.hormuz_dep<0?'N/A':c.hormuz_dep+'%'}</strong>Hormuz exp.</div>
+          <div class="ci-cell"><strong>${c.reserve_days===9999?'∞':c.reserve_days+'d'}</strong>Reserve days</div>
+        </div>
+        ${c.note?`<div class="ci-note">${c.note}</div>`:''}
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function setScenario(s){
+  activeScenario=s;
+  renderShortagePanel();
+  // update hormuz meter
+  const sc=SCENARIOS[s];
+  const risk=s==='full'?'CRITICAL':s==='partial'?'HIGH':'ELEVATED';
+  document.getElementById('m-hormuz').textContent=risk;
+  document.getElementById('m-hormuz').style.color=s==='full'?'var(--red)':s==='partial'?'var(--amber)':'var(--green)';
+}
+
+// ════════════════════════════════════════════════
+// NEWS & STATE
+// ════════════════════════════════════════════════
+let allArticles=[],currentFilter='all',mapFilter='all',sourceStatus={};
+let eventLog=[],prevIds=new Set();
+let typeChart=null;
+
+function relTime(s){
+  if(!s) return '';
+  try{
+    const d=+new Date(s),diff=(Date.now()-d)/1000;
+    if(diff<60) return `${Math.floor(diff)}s ago`;
+    if(diff<3600) return `${Math.floor(diff/60)}m ago`;
+    if(diff<86400) return `${Math.floor(diff/3600)}h ago`;
+    return new Date(s).toLocaleDateString();
+  }catch{return s;}
+}
+
+// country → flag from article location string
+const LOC_FLAG={'Iran/Gulf':'🇮🇷','Yemen':'🇾🇪','Iraq':'🇮🇶','Syria':'🇸🇾','Israel':'🇮🇱','Gaza':'🇵🇸','Lebanon':'🇱🇧','Saudi Arabia':'🇸🇦','USA':'🇺🇸','Ukraine':'🇺🇦','Russia':'🇷🇺','China':'🇨🇳','Taiwan':'🇹🇼','South Korea':'🇰🇷','North Korea':'🇰🇵','Middle East':'🕌','Persian Gulf':'🌊'};
+
+function renderFeed(){
+  const el=document.getElementById('news-feed');
+  let arts;
+  if(currentFilter==='all') arts=allArticles;
+  else if(currentFilter==='reddit') arts=allArticles.filter(a=>a.platform==='reddit');
+  else if(currentFilter==='twitter') arts=allArticles.filter(a=>a.platform==='twitter');
+  else arts=allArticles.filter(a=>a.type===currentFilter);
+  if(!arts.length){
+    const msg=currentFilter==='twitter'?'No tweets — set TWITTER_BEARER_TOKEN in .env (requires $100/mo Basic tier)':
+              currentFilter==='reddit'?'No Reddit posts yet — fetching from r/worldnews, r/geopolitics…':
+              'No articles for this filter.';
+    el.innerHTML=`<div class="loading-msg">${msg}</div>`;return;
+  }
+  el.innerHTML=arts.map(a=>{
+    const lf=LOC_FLAG[a.location]||'🌐';
+    const plat=a.platform==='reddit'?'<span class="plat-badge reddit">Reddit</span>':
+               a.platform==='twitter'?'<span class="plat-badge twitter">𝕏</span>':'';
+    const desc=a.description?`<div style="font-size:9px;color:var(--t3);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.description}</div>`:'';
+    return`<a class="ncard ${a.type}" href="${a.url}" target="_blank" rel="noopener">
+      <div class="cmeta"><span class="ctag ${a.type}">${a.type}</span>${plat}<span class="cflag" title="${a.location}">${lf}</span><span class="ctime">${relTime(a.published_at)}</span></div>
+      <div class="ctitle">${a.title}</div>
+      ${desc}
+      <div class="cfoot"><span class="csrc">${a.source}</span><span class="cloc">${a.location||''}</span></div>
+    </a>`;
+  }).join('');
+}
+
+function filterNews(t,btn){
+  currentFilter=t;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFeed();
+}
+
+// ════════════════════════════════════════════════
+// MAP NEWS MARKERS
+// ════════════════════════════════════════════════
+function renderNewsMap(){
+  layerGroups.news.clearLayers();
+  const arts=mapFilter==='all'?allArticles:allArticles.filter(a=>a.type===mapFilter);
+  arts.forEach(art=>{
+    if(!art.lat||!art.lon) return;
+    const c=COLORS[art.type]||'#888';
+    const lf=LOC_FLAG[art.location]||'';
+    L.marker([art.lat,art.lon],{icon:mkIcon(art.type,14)})
+      .bindPopup(`<div class="pu-type" style="color:${c}">${lf} ${art.type.toUpperCase()}</div>
+        <div class="pu-title">${art.title}</div>
+        <div class="pu-row">${art.source} · ${art.location||''}</div>
+        <a class="pu-link" href="${art.url}" target="_blank" rel="noopener">Read ↗</a>`)
+      .addTo(layerGroups.news);
+  });
+  if(heatOn) renderHeat();
+}
+
+function renderHeat(){
+  if(heatLayer) map.removeLayer(heatLayer);
+  const pts=allArticles.filter(a=>a.lat&&a.lon).map(a=>[a.lat,a.lon,a.type==='attack'?1:.4]);
+  heatLayer=L.heatLayer(pts,{radius:30,blur:20,gradient:{'0.2':'#185fa5','0.5':'#d29922','0.8':'#f85149'}}).addTo(map);
+}
+
+function toggleHeat(){
+  heatOn=!heatOn;
+  document.getElementById('mb-heat').classList.toggle('active',heatOn);
+  if(heatOn) renderHeat();
+  else{if(heatLayer){map.removeLayer(heatLayer);heatLayer=null;}}
+}
+
+function setMapFilter(f){
+  mapFilter=f;
+  ['all','attack'].forEach(k=>document.getElementById('mb-'+k).classList.remove('active'));
+  document.getElementById(f==='all'?'mb-all':'mb-attack').classList.add('active');
+  renderNewsMap();
+}
+
+// ════════════════════════════════════════════════
+// THREAT / ALERT
+// ════════════════════════════════════════════════
+function calcThreat(){
+  const a=allArticles.filter(x=>x.type==='attack').length,t=allArticles.length;
+  const r=t?a/t:0;
+  const [cls,txt]=r>.4?['critical','CRITICAL']:r>.25?['high','HIGH']:r>.1?['med','ELEVATED']:['low','LOW'];
+  document.getElementById('threat-pill').className=`${cls}`;
+  document.getElementById('threat-pill').style.cssText=`display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;border:1px solid;white-space:nowrap;transition:all .5s;background:${cls==='critical'?'rgba(248,81,73,.25)':cls==='high'?'rgba(248,81,73,.12)':cls==='med'?'rgba(210,153,34,.12)':'rgba(63,185,80,.12)'};border-color:${cls==='critical'||cls==='high'?'rgba(248,81,73,.4)':cls==='med'?'rgba(210,153,34,.4)':'rgba(63,185,80,.4)'};color:${cls==='critical'||cls==='high'?'var(--red)':cls==='med'?'var(--amber)':'var(--green)'}`;
+  document.getElementById('threat-text').textContent=txt;
+  document.getElementById('stat-attacks').textContent=a;
+}
+
+function checkAlerts(){
+  const l=allArticles.find(a=>a.type==='attack');
+  if(l){document.getElementById('alert-text').textContent=`${l.source}: ${l.title}`;document.getElementById('alert-bar').classList.add('show');}
+}
+
+// ════════════════════════════════════════════════
+// INTEL
+// ════════════════════════════════════════════════
+const CTRIES=[
+  {name:'Iran',cc:'IR',base:75,kw:['iran','irgc','tehran','nuclear','hormuz'],col:'var(--red)'},
+  {name:'USA',cc:'US',base:55,kw:['us ','usa','america','pentagon','washington','military'],col:'var(--blue)'},
+  {name:'Israel',cc:'IL',base:70,kw:['israel','idf','gaza','tel aviv','mossad'],col:'var(--green)'},
+  {name:'Russia',cc:'RU',base:65,kw:['russia','moscow','ukraine','putin','nato'],col:'var(--purple)'},
+  {name:'China',cc:'CN',base:45,kw:['china','beijing','taiwan','pla','xi'],col:'var(--cyan)'},
+  {name:'Saudi Arabia',cc:'SA',base:40,kw:['saudi','riyadh','aramco','opec'],col:'var(--amber)'},
+  {name:'Yemen/Houthis',cc:'YE',base:80,kw:['houthi','yemen','sanaa','red sea'],col:'var(--orange)'},
+  {name:'Ukraine',cc:'UA',base:85,kw:['ukraine','kyiv','zelensky','donbas','zaporizhzhia'],col:'var(--red)'},
+];
+
+function renderIntel(){
+  const el=document.getElementById('intel-panel');
+  el.innerHTML=`<div class="section-hdr">Country Tension Scores</div>`+
+  CTRIES.map(c=>{
+    const hits=allArticles.filter(a=>c.kw.some(k=>(a.title+' '+(a.description||'')).toLowerCase().includes(k))).length;
+    const score=Math.min(99,c.base+hits*2);
+    const atk=allArticles.filter(a=>a.type==='attack'&&c.kw.some(k=>(a.title||'').toLowerCase().includes(k))).length;
+    return`<div class="country-card">
+      <div class="cc-top">
+        <span class="cc-name"><span class="cc-flag">${flagFromCountry(c.cc)}</span>${c.name}</span>
+        <span style="font-size:13px;font-weight:700;color:${c.col}">${score}</span>
+      </div>
+      <div class="tension-bar"><div class="tension-fill" style="width:${score}%;background:${c.col}"></div></div>
+      <div class="cc-stats">
+        <div class="cc-stat"><strong>${hits}</strong>mentions</div>
+        <div class="cc-stat"><strong style="color:var(--red)">${atk}</strong>strikes</div>
+        <div class="cc-stat"><strong>${score>70?'HIGH':score>40?'MED':'LOW'}</strong>risk</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+// CHARTS
+// ════════════════════════════════════════════════
+function renderCharts(){
+  const el=document.getElementById('charts-panel');
+  const cnts={attack:0,diplomacy:0,military:0,economy:0};
+  allArticles.forEach(a=>{if(cnts[a.type]!==undefined)cnts[a.type]++;});
+  const locCnt={};
+  allArticles.forEach(a=>{if(a.location)locCnt[a.location]=(locCnt[a.location]||0)+1;});
+  const sorted=Object.entries(locCnt).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const mx=sorted[0]?.[1]||1;
+  el.innerHTML=`
+    <div class="stat-grid">
+      <div class="stat-tile"><div class="st-lbl">Total Articles</div><div class="st-val">${allArticles.length}</div><div class="st-sub">last 24h</div></div>
+      <div class="stat-tile"><div class="st-lbl">Strike Events</div><div class="st-val" style="color:var(--red)">${cnts.attack}</div><div class="st-sub">high priority</div></div>
+      <div class="stat-tile"><div class="st-lbl">Live Flights</div><div class="st-val" style="color:var(--green)">${flightData.length}</div><div class="st-sub">conflict zones</div></div>
+      <div class="stat-tile"><div class="st-lbl">Ships Tracked</div><div class="st-val" style="color:var(--amber)">${OIL_TANKERS.length}</div><div class="st-sub">tankers+LNG</div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Event Type Breakdown</div>
+      <div class="chart-wrap"><canvas id="type-chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Top Event Locations</div>
+      ${sorted.map(([loc,cnt])=>`<div class="loc-bar-row"><div class="loc-bar-hdr"><span>${LOC_FLAG[loc]||'🌐'} ${loc}</span><span>${cnt}</span></div><div class="loc-bar-bg"><div class="loc-bar-fill" style="width:${Math.round(cnt/mx*100)}%;background:var(--blue)"></div></div></div>`).join('')}
+    </div>
+  `;
+  const ctx=document.getElementById('type-chart').getContext('2d');
+  if(typeChart) typeChart.destroy();
+  typeChart=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:['Strike','Diplomacy','Military','Economy'],datasets:[{data:[cnts.attack,cnts.diplomacy,cnts.military,cnts.economy],backgroundColor:['#f85149','#58a6ff','#a371f7','#d29922'],borderColor:'transparent',borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8b949e',font:{size:10},boxWidth:10,padding:6}}}}
+  });
+}
+
+// ════════════════════════════════════════════════
+// EVENT LOG
+// ════════════════════════════════════════════════
+function addLog(art){
+  eventLog.unshift({title:art.title,type:art.type,source:art.source,loc:art.location,flag:LOC_FLAG[art.location]||'🌐',time:new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})});
+  if(eventLog.length>100) eventLog.pop();
+  document.getElementById('log-count').textContent=eventLog.length;
+  document.getElementById('event-log').innerHTML=eventLog.map(e=>`
+    <div class="elog">
+      <div class="elog-dot" style="background:${COLORS[e.type]||'#888'}"></div>
+      <div class="elog-content">
+        <div class="elog-title">${e.flag} ${e.title}</div>
+        <div class="elog-meta"><span>${e.type.toUpperCase()}</span><span>${e.source}</span><span>${e.time}</span></div>
+      </div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// MARKETS
+// ════════════════════════════════════════════════
+function fP(v,pre='$',d=2){return!v&&v!==0?'—':pre+Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fC(v){return!v&&v!==0?{t:'—',c:''}:{t:`${v>0?'+':''}${v.toFixed(2)}%`,c:v>0?'up':v<0?'down':'neutral'};}
+function hasValidMarketValue(v){const n=Number(v);return Number.isFinite(n)&&n>0;}
+function setMkt(id,cid,price,chg,pre='$',d=2){
+  const el=document.getElementById(id),ce=document.getElementById(cid);
+  if(!hasValidMarketValue(price)){
+    if(el) el.textContent='—';
+    if(ce){ce.textContent='—';ce.className='mkt-chg neutral';}
+    return;
+  }
+  if(el) el.textContent=fP(price,pre,d);
+  if(ce){const{t,c}=fC(chg);ce.textContent=t;ce.className='mkt-chg '+c;}
+}
+
+function updateMarkets(data){
+  const c=data.crypto||{},cm=data.commodities||{},s=data.stocks||{};
+  if(c.bitcoin&&hasValidMarketValue(c.bitcoin.price))  setMkt('m-btc','m-btc-c',c.bitcoin.price,c.bitcoin.change_24h,'$',0);
+  if(c.ethereum&&hasValidMarketValue(c.ethereum.price)) setMkt('m-eth','m-eth-c',c.ethereum.price,c.ethereum.change_24h,'$',0);
+  if(cm.wti&&hasValidMarketValue(cm.wti.price))   setMkt('m-wti','m-wti-c',cm.wti.price,cm.wti.change_24h);
+  if(cm.brent&&hasValidMarketValue(cm.brent.price)) setMkt('m-brent','m-brent-c',cm.brent.price,cm.brent.change_24h);
+  if(cm.nat_gas&&hasValidMarketValue(cm.nat_gas.price)) setMkt('m-gas','m-gas-c',cm.nat_gas.price,cm.nat_gas.change_24h);
+  if(cm.gold&&hasValidMarketValue(cm.gold.price))  setMkt('m-gold','m-gold-c',cm.gold.price,cm.gold.change_24h,'$',0);
+  if(s.spy&&hasValidMarketValue(s.spy.price))    setMkt('m-spy','m-spy-c',s.spy.price,s.spy.change_24h);
+  if(hasValidMarketValue(cm.usd_inr)) document.getElementById('m-inr').textContent='₹'+Number(cm.usd_inr).toFixed(2);
+  updateTicker(c,cm,s);
+}
+
+function updateTicker(c={},cm={},s={}){
+  const items=[
+    c.bitcoin&&hasValidMarketValue(c.bitcoin.price)?`BTC $${Math.round(c.bitcoin.price).toLocaleString()} ${c.bitcoin.change_24h>0?'▲':'▼'}${Math.abs(c.bitcoin.change_24h).toFixed(2)}%`:null,
+    cm.wti&&hasValidMarketValue(cm.wti.price)?`WTI $${cm.wti.price} ${cm.wti.change_24h>0?'▲':'▼'}${Math.abs(cm.wti.change_24h||0).toFixed(2)}%`:null,
+    cm.brent&&hasValidMarketValue(cm.brent.price)?`BRENT $${cm.brent.price}`:null,
+    cm.nat_gas&&hasValidMarketValue(cm.nat_gas.price)?`NAT GAS $${cm.nat_gas.price}`:null,
+    s.spy&&hasValidMarketValue(s.spy.price)?`SPY $${s.spy.price} ${s.spy.change_24h>0?'▲':'▼'}${Math.abs(s.spy.change_24h||0).toFixed(2)}%`:null,
+    cm.gold&&hasValidMarketValue(cm.gold.price)?`GOLD $${Math.round(cm.gold.price)}/oz`:null,
+    `🚢 ${OIL_TANKERS.filter(t=>t.status==='DIVERTED').length} TANKERS DIVERTED`,
+    `✈ ${flightData.length} AIRCRAFT TRACKED`,
+    `🛢 ${OIL_RIGS.filter(r=>r.threat==='HIGH').length} RIGS AT HIGH THREAT`,
+    '〰 STRAIT OF HORMUZ LIVE MONITORING',
+  ].filter(Boolean);
+  const full=[...items,...items];
+  document.getElementById('ticker-track').innerHTML=full.map(i=>`<div class="tick"><span>${i}</span></div>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// TAB ROUTING
+// ════════════════════════════════════════════════
+function setTab(tab){
+  document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sb-'+tab).classList.add('active');
+  setRTab(tab);
+}
+
+function setRTab(tab){
+  document.querySelectorAll('.tab-body').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
+  const tb=document.getElementById('tb-'+tab);
+  const pt=document.getElementById('pt-'+tab);
+  if(tb) tb.classList.add('active');
+  if(pt) pt.classList.add('active');
+  if(tab==='flights') fetchFlights();
+  if(tab==='rigs') renderRigsPanel();
+  if(tab==='ships') renderShipsPanel();
+  if(tab==='shortage') renderShortagePanel();
+  if(tab==='intel') renderIntel();
+  if(tab==='charts') renderCharts();
+}
+
+// ════════════════════════════════════════════════
+// NEWS UPDATE
+// ════════════════════════════════════════════════
+async function fetchNews(){
+  try{
+    const r=await fetch(`${API_BASE}/api/news`,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    updateNews(await r.json());
+  }catch(e){
+    console.warn('News fetch error:',e);
+  }
+}
+
+async function fetchMarkets(){
+  try{
+    const r=await fetch(`${API_BASE}/api/markets`,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    updateMarkets(await r.json());
+  }catch(e){
+    console.warn('Markets fetch error:',e);
+  }
+}
+
+function updateNews(data){
+  const newArts=(data.articles||[]).filter(a=>!prevIds.has(a.id));
+  allArticles=data.articles||[];
+  newArts.forEach(a=>{addLog(a);prevIds.add(a.id);});
+  if(data.sources) sourceStatus=data.sources;
+  document.getElementById('stat-total').textContent=allArticles.length;
+  document.getElementById('stat-updated').textContent=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  renderFeed(); renderNewsMap(); calcThreat(); checkAlerts();
+}
+
+// ════════════════════════════════════════════════
+// WEBSOCKET
+// ════════════════════════════════════════════════
+let ws=null,wsRetry=null,wsEverConnected=false,usePollingFallback=false,newsPollInt=null,marketsPollInt=null;
+function startHttpPolling(){
+  if(newsPollInt||marketsPollInt) return;
+  usePollingFallback=true;
+  setWS('polling');
+  fetchNews();
+  fetchMarkets();
+  newsPollInt=setInterval(fetchNews,120000);
+  marketsPollInt=setInterval(fetchMarkets,30000);
+}
+function connectWS(){
+  if(usePollingFallback) return;
+  setWS('connecting');
+  ws=new WebSocket(WS_URL);
+  let opened=false;
+  ws.onopen=()=>{
+    opened=true;
+    wsEverConnected=true;
+    setWS('connected');
+    clearTimeout(wsRetry);
+  };
+  ws.onmessage=evt=>{
+    try{
+      const m=JSON.parse(evt.data);
+      if(m.type==='news'&&m.data) updateNews(m.data);
+      if(m.type==='markets'&&m.data) updateMarkets(m.data);
+      if(m.type==='flights'&&m.data){ flightData=(m.data.flights||[]).map(f=>({...f,isMil:f.is_military})); renderFlightsPanel(); renderFlightsOnMap(); document.getElementById('stat-flights').textContent=flightData.length; }
+      if(m.type==='ships'&&m.data) updateShips(m.data);
+    }catch(e){console.error(e);}
+  };
+  ws.onclose=()=>{
+    ws=null;
+    if(!opened&&!wsEverConnected){
+      startHttpPolling();
+      return;
+    }
+    if(usePollingFallback){
+      setWS('polling');
+      return;
+    }
+    setWS('error');
+    wsRetry=setTimeout(connectWS,5000);
+  };
+  ws.onerror=()=>{setWS('error');ws.close();};
+}
+function setWS(s){
+  document.getElementById('wsdot').className='wsdot '+s;
+  document.getElementById('ws-lbl').textContent={connected:'Connected',connecting:'Connecting…',error:'Reconnecting…',polling:'Polling'}[s]||s;
+}
+function manualRefresh(){
+  if(ws&&ws.readyState===1) ws.send(JSON.stringify({action:'refresh'}));
+  else{
+    if(!usePollingFallback) connectWS();
+    fetchNews();
+    fetchMarkets();
+  }
+  fetchShips();
+  fetchFlights();
+}
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+renderStaticSites();
+renderRigsOnMap();
+renderShortagePanel();
+
+connectWS();
+fetchShips();
+setInterval(fetchShips,120000);
+fetchFlights();
+flightFetchInt=setInterval(fetchFlights,60000);
+
+setTimeout(()=>{
+  if(!allArticles.length){
+    fetchNews();
+    fetchMarkets();
+  }
+},4000);
+</script>
+</body>
+</html>
