@@ -1,4 +1,8 @@
 {
-  "buildCommand": "python build.py"
+  "buildCommand": "python build.py",
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "frontend/**"
+    }
+  }
 }
-

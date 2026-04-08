@@ -31,7 +31,7 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, Response
 import uvicorn
 
 app = FastAPI(title="Global Conflict Intelligence API", version="3.0.0")
@@ -82,6 +82,8 @@ CACHE_DB_PATH = Path(os.getenv("CACHE_DB_PATH", str(_default_cache_db_path())))
 NEWS_BASE_LIMIT = 60
 _rss_err_ts: dict[str, float] = {}
 RSS_ERR_COOL = 300
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+FRONTEND_INDEX_PATH = PROJECT_ROOT / "frontend" / "index.html"
 
 class CacheStore:
     def __init__(self, db_path: Path):
@@ -1245,13 +1247,30 @@ def _root_status_payload() -> dict[str, Any]:
     }
 
 
+def _serve_frontend() -> FileResponse | dict[str, Any]:
+    if FRONTEND_INDEX_PATH.exists():
+        return FileResponse(FRONTEND_INDEX_PATH, media_type="text/html")
+    logger.warning("Frontend index missing at %s", FRONTEND_INDEX_PATH)
+    return _root_status_payload()
+
+
 @app.get("/")
 async def root(request: Request):
     accept = (request.headers.get("accept") or "").lower()
     wants_html = "text/html" in accept or "application/xhtml+xml" in accept
-    if os.getenv("VERCEL") and wants_html:
-        return RedirectResponse("/index.html", status_code=307)
+    if wants_html:
+        return _serve_frontend()
     return _root_status_payload()
+
+
+@app.get("/index.html", include_in_schema=False)
+async def frontend_index():
+    return _serve_frontend()
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
 
 
 @app.get("/api/status")
