@@ -246,7 +246,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
 .cc-stat strong{display:block;font-size:11px;color:var(--t1)}
 
 /* ── CAUSALITY GRAPH OVERLAY ── */
-#graph-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg0);z-index:200;flex-direction:column;display:none}
+#graph-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg0);z-index:1000;flex-direction:column;display:none}
 #graph-container{flex:1;position:relative;background:var(--bg0)}
 #graph-node-detail{position:absolute;bottom:12px;left:12px;z-index:10;background:rgba(8,12,16,.94);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;min-width:220px;max-width:320px;display:none;pointer-events:none}
 .graph-chain-btn{background:var(--bg4);border:1px solid var(--border);color:var(--t2);border-radius:5px;padding:3px 9px;font-size:9px;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -286,6 +286,30 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
 .fbadge.stale{background:rgba(210,153,34,.15);color:var(--amber);border:1px solid rgba(210,153,34,.3)}
 .fbadge.err{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.3)}
 .src-health{display:flex;gap:4px;margin-left:auto;align-items:center}
+
+/* ── MARKETS CHARTS OVERLAY ── */
+#markets-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg0);z-index:1000;flex-direction:column;display:none}
+.mo-topbar{height:42px;background:var(--bg1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0}
+.mo-title{font-size:11px;font-weight:700;color:var(--blue)}
+.mo-sym-row{display:flex;gap:4px;margin-left:8px}
+.mo-btn{background:var(--bg4);border:1px solid var(--border);color:var(--t2);border-radius:5px;padding:3px 9px;font-size:9px;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:var(--font)}
+.mo-btn:hover{background:rgba(88,166,255,.12);border-color:var(--blue);color:var(--blue)}
+.mo-btn.active{background:rgba(88,166,255,.12);border-color:var(--blue);color:var(--blue)}
+.mo-range-row{display:flex;gap:3px;margin-left:auto}
+.mo-chart-wrap{flex:1;position:relative;min-height:0}
+#mo-chart{width:100%;height:100%}
+.mo-events-pane{height:170px;border-top:1px solid var(--border);overflow-y:auto;flex-shrink:0;background:var(--bg1)}
+.mo-events-pane::-webkit-scrollbar{width:3px}
+.mo-events-pane::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.mo-ev-hdr{padding:4px 12px;font-size:9px;color:var(--t2);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border);background:var(--bg1);position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:6px}
+.mkts-event-row{display:flex;align-items:flex-start;gap:8px;padding:5px 12px;border-bottom:1px solid rgba(48,54,61,.6);cursor:pointer;transition:background .12s}
+.mkts-event-row:hover{background:var(--bg3)}
+.mev-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.mev-type{font-size:8px;font-weight:700;text-transform:uppercase;width:60px;flex-shrink:0;padding-top:1px}
+.mev-title{font-size:10px;color:var(--t1);flex:1;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mev-meta{font-size:9px;color:var(--t3);white-space:nowrap;flex-shrink:0}
+.mo-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--t2);font-size:12px;gap:8px}
+.mo-err{color:var(--red);font-size:11px;padding:20px;text-align:center}
 </style>
 </head>
 <body>
@@ -357,6 +381,10 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/></svg>
       SANC
     </button>
+    <button class="sbtn" id="sb-mkts" onclick="setTab('mkts')" title="Markets Charts">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 0h1v15h15v1H0zm10 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4.9l-3.613 4.417a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61L13.445 4H10.5a.5.5 0 0 1-.5-.5"/></svg>
+      MKTS
+    </button>
   </div>
 
   <!-- MAP -->
@@ -386,6 +414,40 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
         <div style="font-size:10px;color:var(--t2);line-height:1.5" id="gnd-detail"></div>
       </div>
     </div>
+
+    <!-- MARKETS CHARTS OVERLAY -->
+    <div id="markets-overlay">
+      <div class="mo-topbar">
+        <span class="mo-title">📈 WORLD EVENTS &amp; MARKETS</span>
+        <div class="mo-sym-row">
+          <button class="mo-btn active" id="mo-sym-BTC"   onclick="setMktsSymbol('BTC')">₿ Bitcoin</button>
+          <button class="mo-btn"        id="mo-sym-NIFTY" onclick="setMktsSymbol('NIFTY')">🇮🇳 Nifty 50</button>
+          <button class="mo-btn"        id="mo-sym-SPY"   onclick="setMktsSymbol('SPY')">🇺🇸 S&amp;P 500</button>
+          <button class="mo-btn"        id="mo-sym-FTSE"  onclick="setMktsSymbol('FTSE')">🇬🇧 FTSE 100</button>
+          <button class="mo-btn"        id="mo-sym-N225"  onclick="setMktsSymbol('N225')">🇯🇵 Nikkei</button>
+        </div>
+        <div class="mo-range-row">
+          <button class="mo-btn" id="mo-d7"  onclick="setMktsDays(7)">1W</button>
+          <button class="mo-btn active" id="mo-d30" onclick="setMktsDays(30)">1M</button>
+          <button class="mo-btn" id="mo-d90" onclick="setMktsDays(90)">3M</button>
+          <button class="mo-btn" id="mo-d180" onclick="setMktsDays(180)">6M</button>
+          <button class="mo-btn" id="mo-d365" onclick="setMktsDays(365)">1Y</button>
+        </div>
+        <button class="mo-btn" style="margin-left:10px" onclick="setTab('news')">✕ Close</button>
+      </div>
+      <div class="mo-chart-wrap">
+        <div id="mo-chart"><div class="mo-loading"><div class="spin"></div>Loading chart…</div></div>
+      </div>
+      <div class="mo-events-pane">
+        <div class="mo-ev-hdr">
+          <span>🗞 NEWS EVENTS ON CHART</span>
+          <span id="mo-ev-count" style="color:var(--t3)">0 events</span>
+          <span style="margin-left:auto;color:var(--t3);font-size:8px">Click a marker on the chart to filter · click row to open article</span>
+        </div>
+        <div id="mo-events-list"></div>
+      </div>
+    </div>
+
     <div class="mctrl">
       <button class="mbtn active" id="mb-all" onclick="setMapFilter('all')">All Events</button>
       <button class="mbtn" id="mb-attack" onclick="setMapFilter('attack')">Strikes</button>
@@ -436,6 +498,7 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
       <button class="ptab" id="pt-graph" onclick="setTab('graph')">Graph</button>
       <button class="ptab" id="pt-osint" onclick="setRTab('osint')">OSINT</button>
       <button class="ptab" id="pt-sanctions" onclick="setRTab('sanctions')">Sanctions</button>
+      <button class="ptab" id="pt-mkts" onclick="setTab('mkts')">📈 Mkts</button>
     </div>
 
     <!-- NEWS -->
@@ -933,9 +996,21 @@ let flightFetchInt=null;
 
 async function fetchFlights(){
   try{
-    const r=await fetch(`${API_BASE}/api/flights`,{signal:AbortSignal.timeout(12000)});
+    const r=await fetch(`${API_BASE}/api/flights`,{signal:AbortSignal.timeout(15000)});
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d=await r.json();
+    if(d.status==='unavailable'){
+      document.getElementById('flights-list').innerHTML=
+        `<div class="loading-msg" style="color:var(--amber);gap:6px">
+          <div style="font-size:20px">✈</div>
+          <div style="font-weight:700;font-size:11px">Flight data unavailable in cloud deployment</div>
+          <div style="font-size:10px;color:var(--t3);max-width:280px;line-height:1.5">${d.reason||'OpenSky Network blocks data-center IPs. Run the backend locally for live flights.'}</div>
+        </div>`;
+      document.getElementById('flight-count').innerHTML='<span style="color:var(--amber)">Unavailable on Vercel</span>';
+      document.getElementById('stat-flights').textContent='—';
+      if(flightFetchInt){ clearInterval(flightFetchInt); flightFetchInt=null; } // no point retrying
+      return;
+    }
     flightData=(d.flights||[]).map(f=>({...f,isMil:f.is_military}));
     renderFlightsPanel();
     renderFlightsOnMap();
@@ -1457,14 +1532,21 @@ function setTab(tab){
   const sbEl = document.getElementById('sb-'+tab);
   if(sbEl) sbEl.classList.add('active');
   // show/hide causality graph overlay
-  const overlay = document.getElementById('graph-overlay');
+  const graphOverlay = document.getElementById('graph-overlay');
+  const mktsOverlay  = document.getElementById('markets-overlay');
   if(tab==='graph'){
     if(!allArticles.length) fetchNews();
-    overlay.style.display='flex';
+    graphOverlay.style.display='flex';
+    mktsOverlay.style.display='none';
     buildChainButtons();
     requestAnimationFrame(()=>renderGraphChain(activeChain));
+  } else if(tab==='mkts'){
+    graphOverlay.style.display='none';
+    mktsOverlay.style.display='flex';
+    initMktsChart();
   } else {
-    overlay.style.display='none';
+    graphOverlay.style.display='none';
+    mktsOverlay.style.display='none';
   }
   setRTab(tab);
 }
@@ -1550,7 +1632,7 @@ function connectWS(){
       const m=JSON.parse(evt.data);
       if(m.type==='news'&&m.data) updateNews(m.data);
       if(m.type==='markets'&&m.data) updateMarkets(m.data);
-      if(m.type==='flights'&&m.data){ flightData=(m.data.flights||[]).map(f=>({...f,isMil:f.is_military})); renderFlightsPanel(); renderFlightsOnMap(); document.getElementById('stat-flights').textContent=flightData.length; }
+      if(m.type==='flights'&&m.data){ if(m.data.status!=='unavailable'){ flightData=(m.data.flights||[]).map(f=>({...f,isMil:f.is_military})); renderFlightsPanel(); renderFlightsOnMap(); document.getElementById('stat-flights').textContent=flightData.length; } }
       if(m.type==='ships'&&m.data) updateShips(m.data);
     }catch(e){console.error(e);}
   };
@@ -1953,6 +2035,203 @@ setTimeout(()=>{
     fetchMarkets();
   }
 },4000);
+
+// ════════════════════════════════════════════════
+// MARKETS CHART  (Lightweight Charts + Yahoo Finance)
+// ════════════════════════════════════════════════
+let _lwcReady = false;
+let _lwcLoading = false;
+let _lwcCallbacks = [];
+let _mktsChart = null;
+let _mktsSeries = null;
+let _mktsSymbol = 'BTC';
+let _mktsDays   = 30;
+let _mktsData   = null;
+let _mktsSelectedTime = null;
+
+function _loadLWC(cb){
+  if(_lwcReady){ cb(); return; }
+  _lwcCallbacks.push(cb);
+  if(_lwcLoading) return;
+  _lwcLoading = true;
+  const s = document.createElement('script');
+  s.src = 'https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js';
+  s.onload = ()=>{ _lwcReady=true; _lwcLoading=false; _lwcCallbacks.forEach(f=>f()); _lwcCallbacks=[]; };
+  s.onerror = ()=>{ _lwcLoading=false; console.error('Failed to load LWC'); };
+  document.head.appendChild(s);
+}
+
+function initMktsChart(){
+  _loadLWC(()=>{
+    _buildMktsChart();
+    fetchMktsData();
+  });
+}
+
+function _buildMktsChart(){
+  const wrap = document.getElementById('mo-chart');
+  // destroy old instance if any
+  if(_mktsChart){ try{ _mktsChart.remove(); }catch(e){} _mktsChart=null; _mktsSeries=null; }
+  wrap.innerHTML = '';
+  _mktsChart = LightweightCharts.createChart(wrap, {
+    layout:{ background:{color:'#080c10'}, textColor:'#8b949e' },
+    grid:{ vertLines:{color:'rgba(48,54,61,.5)'}, horzLines:{color:'rgba(48,54,61,.5)'} },
+    crosshair:{ mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale:{ borderColor:'rgba(48,54,61,.85)' },
+    timeScale:{ borderColor:'rgba(48,54,61,.85)', timeVisible:true, secondsVisible:false },
+    handleScroll:{ mouseWheel:true, pressedMouseMove:true },
+    handleScale:{ mouseWheel:true, pinch:true },
+  });
+  const ro = new ResizeObserver(()=>{
+    if(_mktsChart) _mktsChart.applyOptions({width:wrap.clientWidth,height:wrap.clientHeight});
+  });
+  ro.observe(wrap);
+  _mktsChart.applyOptions({width:wrap.clientWidth, height:wrap.clientHeight});
+
+  _mktsSeries = _mktsChart.addCandlestickSeries({
+    upColor:'#3fb950', downColor:'#f85149',
+    borderUpColor:'#3fb950', borderDownColor:'#f85149',
+    wickUpColor:'#3fb950', wickDownColor:'#f85149',
+  });
+
+  // click on chart → filter events list by nearest date
+  _mktsChart.subscribeClick(param=>{
+    if(!param || !param.time) return;
+    _mktsSelectedTime = param.time;
+    renderMktsEventsList(_mktsData, param.time);
+  });
+}
+
+async function fetchMktsData(){
+  const wrap = document.getElementById('mo-chart');
+  if(!_mktsChart) _buildMktsChart();
+  if(!_mktsSeries) return;
+  // show loading state
+  const loadDiv = document.createElement('div');
+  loadDiv.className='mo-loading'; loadDiv.id='mo-spin';
+  loadDiv.innerHTML='<div class="spin"></div>Fetching '+_mktsSymbol+'…';
+  wrap.appendChild(loadDiv);
+
+  try{
+    const r = await fetch(`${API_BASE}/api/chart-data?symbol=${_mktsSymbol}&days=${_mktsDays}`,
+      {signal:AbortSignal.timeout(20000)});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    _mktsData = await r.json();
+  }catch(e){
+    const el=document.getElementById('mo-spin');
+    if(el) el.innerHTML=`<span class="mo-err">Failed to load chart: ${e.message}</span>`;
+    return;
+  }
+  const sp=document.getElementById('mo-spin');
+  if(sp) sp.remove();
+
+  renderMktsChart(_mktsData);
+  renderMktsEventsList(_mktsData, null);
+}
+
+function renderMktsChart(data){
+  if(!_mktsSeries || !data) return;
+  const candles = (data.candles||[]).map(c=>({
+    time: c.time, open: c.open, high: c.high, low: c.low, close: c.close
+  }));
+  _mktsSeries.setData(candles);
+
+  // build markers from events
+  const typeShape = {attack:'arrowDown', military:'arrowDown', economy:'circle', diplomacy:'circle'};
+  const typeColor = {attack:'#f85149', military:'#a371f7', economy:'#d29922', diplomacy:'#58a6ff'};
+
+  // group events by candle time (pick the candle closest to each event)
+  const candleTimes = candles.map(c=>c.time);
+  const markers = [];
+  const seen = new Set();
+  for(const ev of (data.events||[])){
+    if(!ev.time) continue;
+    // find nearest candle time
+    let best = candleTimes[0], bestDiff = Infinity;
+    for(const ct of candleTimes){
+      const d = Math.abs(ct - ev.time);
+      if(d < bestDiff){ bestDiff=d; best=ct; }
+    }
+    const key = `${best}_${ev.type}`;
+    if(seen.has(key)) continue; // one marker per candle+type to avoid clutter
+    seen.add(key);
+    markers.push({
+      time: best,
+      position: ev.type==='attack'||ev.type==='military' ? 'aboveBar' : 'belowBar',
+      color: typeColor[ev.type]||'#58a6ff',
+      shape: typeShape[ev.type]||'circle',
+      text: ev.source ? ev.source.substring(0,12) : '',
+      size: 1,
+    });
+  }
+  markers.sort((a,b)=>a.time-b.time);
+  _mktsSeries.setMarkers(markers);
+  _mktsChart.timeScale().fitContent();
+}
+
+function renderMktsEventsList(data, filterTime){
+  const list = document.getElementById('mo-events-list');
+  const countEl = document.getElementById('mo-ev-count');
+  if(!list || !data) return;
+  const events = data.events || [];
+  const typeColor = {attack:'#f85149',military:'#a371f7',economy:'#d29922',diplomacy:'#58a6ff'};
+  const typeLabel = {attack:'STRIKE',military:'MILITARY',economy:'ECONOMY',diplomacy:'DIPLOMACY'};
+
+  let filtered = events;
+  if(filterTime){
+    // show events within ±1 candle window of clicked time
+    const candleDur = _mktsDays<=7 ? 3600 : 86400;
+    filtered = events.filter(e=>Math.abs(e.time-filterTime) <= candleDur*2);
+    if(!filtered.length) filtered = events; // fallback: show all
+  }
+
+  countEl.textContent = filtered.length === events.length
+    ? `${events.length} events`
+    : `${filtered.length} / ${events.length} events near click`;
+
+  if(!filtered.length){
+    list.innerHTML='<div style="padding:12px;font-size:10px;color:var(--t3);text-align:center">No news events in this time window</div>';
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  for(const ev of [...filtered].reverse()){
+    const row = document.createElement('a');
+    row.className='mkts-event-row';
+    row.href = ev.url||'#';
+    row.target='_blank';
+    row.rel='noopener noreferrer';
+    const color = typeColor[ev.type]||'#58a6ff';
+    const label = typeLabel[ev.type]||ev.type.toUpperCase();
+    const dt = ev.time ? new Date(ev.time*1000).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}) : '';
+    row.innerHTML=`<div class="mev-dot" style="background:${color}"></div>`+
+      `<span class="mev-type" style="color:${color}">${label}</span>`+
+      `<span class="mev-title">${ev.title||''}</span>`+
+      `<span class="mev-meta">${ev.source?ev.source.substring(0,14):''}<br>${dt}</span>`;
+    frag.appendChild(row);
+  }
+  list.innerHTML='';
+  list.appendChild(frag);
+}
+
+function setMktsSymbol(sym){
+  _mktsSymbol=sym;
+  _mktsSelectedTime=null;
+  document.querySelectorAll('.mo-sym-row .mo-btn').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('mo-sym-'+sym);
+  if(el) el.classList.add('active');
+  if(_mktsChart) fetchMktsData();
+}
+
+function setMktsDays(d){
+  _mktsDays=d;
+  _mktsSelectedTime=null;
+  [7,30,90,180,365].forEach(n=>{
+    const el=document.getElementById('mo-d'+n);
+    if(el) el.classList.toggle('active', n===d);
+  });
+  if(_mktsChart) fetchMktsData();
+}
 </script>
 </body>
 </html>

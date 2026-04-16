@@ -464,8 +464,21 @@ async def _fetch_all_flights_uncached() -> dict:
     return result
 
 
+_IS_VERCEL = bool(os.getenv("VERCEL"))
+
 async def fetch_all_flights() -> dict:
-    """Aggregate flights from all conflict zones."""
+    """Aggregate flights from all conflict zones.
+    OpenSky blocks cloud/data-center IPs, so skip entirely on Vercel."""
+    if _IS_VERCEL:
+        return {
+            "status": "unavailable",
+            "reason": "OpenSky Network blocks cloud-hosting IPs. Run locally or self-host for live flights.",
+            "count": 0,
+            "military_count": 0,
+            "zones": {},
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "flights": [],
+        }
     return await _cached_json("flights", ttl=FLIGHTS_CACHE_TTL, builder=_fetch_all_flights_uncached)
 
 
@@ -1376,6 +1389,7 @@ def _root_status_payload() -> dict[str, Any]:
             "/api/ships",
             "/api/rigs",
             "/api/shortage",
+            "/api/chart-data",
             "/api/health",
             "/api/status",
             "/ws",
@@ -1570,6 +1584,159 @@ async def get_osint_media(
         _cache_set(cache_key, out)
     return out
 
+
+
+# ═══════════════════════════════════════════════
+# CHART DATA  (Yahoo Finance OHLCV + news events)
+# ═══════════════════════════════════════════════
+
+CHART_SYMBOLS = {
+    "BTC":   "BTC-USD",
+    "NIFTY": "^NSEI",
+    "SPY":   "SPY",
+    "FTSE":  "^FTSE",
+    "N225":  "^N225",
+}
+
+CHART_CACHE_TTL = _env_int("CHART_CACHE_TTL_SECONDS", 900)  # 15 min — daily OHLCV
+
+_YAHOO_HDR = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                  " (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
+    "Accept": "application/json",
+}
+
+async def _fetch_ohlcv(symbol: str, days: int) -> list[dict]:
+    """Fetch OHLCV candles from Yahoo Finance v8 chart API."""
+    if days <= 7:
+        interval, period = "1h", "7d"
+    elif days <= 30:
+        interval, period = "1d", "1mo"
+    elif days <= 90:
+        interval, period = "1d", "3mo"
+    elif days <= 180:
+        interval, period = "1d", "6mo"
+    else:
+        interval, period = "1d", "1y"
+
+    url = (
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+        f"?interval={interval}&range={period}&includePrePost=false"
+    )
+    try:
+        async with httpx.AsyncClient(headers=_YAHOO_HDR, timeout=12.0, follow_redirects=True) as cl:
+            r = await cl.get(url)
+            r.raise_for_status()
+            data = r.json()
+    except Exception as e:
+        logger.warning("Yahoo Finance fetch error symbol=%s: %r", symbol, e)
+        return []
+
+    try:
+        result = data["chart"]["result"][0]
+        ts_list = result["timestamp"]
+        q = result["indicators"]["quote"][0]
+        opens  = q.get("open",  [])
+        highs  = q.get("high",  [])
+        lows   = q.get("low",   [])
+        closes = q.get("close", [])
+        vols   = q.get("volume",[])
+        candles = []
+        for i, ts in enumerate(ts_list):
+            o = opens[i] if i < len(opens) else None
+            h = highs[i] if i < len(highs) else None
+            lo = lows[i]  if i < len(lows)  else None
+            c = closes[i] if i < len(closes) else None
+            v = vols[i]   if i < len(vols)   else None
+            if None in (o, h, lo, c):
+                continue
+            candles.append({
+                "time": int(ts),
+                "open":  round(float(o), 4),
+                "high":  round(float(h), 4),
+                "low":   round(float(lo), 4),
+                "close": round(float(c), 4),
+                "volume": int(v) if v else 0,
+            })
+        return candles
+    except Exception as e:
+        logger.warning("Yahoo Finance parse error symbol=%s: %r", symbol, e)
+        return []
+
+
+def _news_to_chart_events(articles: list[dict]) -> list[dict]:
+    """Convert news articles to chart event markers (attack/military/economy/diplomacy)."""
+    type_color = {"attack": "#f85149", "military": "#a371f7", "economy": "#d29922", "diplomacy": "#58a6ff"}
+    events = []
+    for a in articles:
+        pub = a.get("published_at") or ""
+        if not pub:
+            continue
+        try:
+            dt = datetime.fromisoformat(pub.replace("Z", "+00:00"))
+            ts = int(dt.timestamp())
+        except Exception:
+            continue
+        etype = a.get("type", "diplomacy")
+        events.append({
+            "time":   ts,
+            "title":  (a.get("title") or "")[:120],
+            "source": a.get("source", ""),
+            "type":   etype,
+            "color":  type_color.get(etype, "#58a6ff"),
+            "url":    a.get("url", "#"),
+            "region": a.get("region", ""),
+        })
+    # deduplicate by timestamp+title hash
+    seen: set[str] = set()
+    out = []
+    for e in events:
+        k = f"{e['time']}_{e['title'][:40]}"
+        if k not in seen:
+            seen.add(k)
+            out.append(e)
+    out.sort(key=lambda x: x["time"])
+    return out
+
+
+@app.get("/api/chart-data")
+async def get_chart_data(
+    symbol: str = Query(default="BTC", regex="^(BTC|NIFTY|SPY|FTSE|N225)$"),
+    days: int = Query(default=30, ge=7, le=365),
+):
+    """OHLCV candlestick data from Yahoo Finance + recent news events as markers."""
+    cache_key = f"chart_{symbol}_{days}"
+    cached = _cache_get(cache_key, ttl=CHART_CACHE_TTL)
+    if cached:
+        return cached
+
+    yf_sym = CHART_SYMBOLS[symbol]
+    candles = await _fetch_ohlcv(yf_sym, days)
+
+    # pull news events from cache (best-effort, no extra HTTP call)
+    news_payload = _cache_get("news_payload", ttl=NEWS_CACHE_TTL * 5) or {}
+    articles = news_payload.get("articles", [])
+    events = _news_to_chart_events(articles)
+
+    # only include events that fall within the chart window
+    if candles:
+        t_min = candles[0]["time"]
+        t_max = candles[-1]["time"]
+        events = [e for e in events if t_min <= e["time"] <= t_max]
+
+    out = {
+        "symbol": symbol,
+        "yf_symbol": yf_sym,
+        "days": days,
+        "candle_count": len(candles),
+        "event_count": len(events),
+        "candles": candles,
+        "events": events,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if candles:
+        _cache_set(cache_key, out)
+    return out
 
 
 @app.get("/api/health")

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import ast; ast.parse\\(open\\('backend/main.py'\\).read\\(\\)\\); print\\('backend OK'\\)\")",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('d:/Work/war/backend/main.py'\\).read\\(\\)\\); print\\('backend OK'\\)\")"
+    ]
+  }
+}
