@@ -42,6 +42,7 @@ logging.basicConfig(level=getattr(logging, os.getenv("LOG_LEVEL","INFO").upper()
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("conflict_intel")
 
+
 NEWS_API_KEY      = os.getenv("NEWS_API_KEY", "")
 GNEWS_API_KEY     = os.getenv("GNEWS_API_KEY", "")
 ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY", "")
@@ -70,7 +71,7 @@ def _default_cache_db_path() -> Path:
 
 
 CACHE_TTL = _env_int("CACHE_TTL_SECONDS", 120)
-NEWS_CACHE_TTL = _env_int("NEWS_CACHE_TTL_SECONDS", CACHE_TTL)
+NEWS_CACHE_TTL = _env_int("NEWS_CACHE_TTL_SECONDS", 60)  # target ≤60s freshness
 FLIGHTS_CACHE_TTL = _env_int("FLIGHTS_CACHE_TTL_SECONDS", 55)
 MARKETS_CACHE_TTL = _env_int("MARKETS_CACHE_TTL_SECONDS", 60)
 COMMODITIES_CACHE_TTL = _env_int("COMMODITIES_CACHE_TTL_SECONDS", 21600)
@@ -618,34 +619,160 @@ def compute_impact(country: dict, scenario_key: str, attack_count: int) -> dict:
 # ═══════════════════════════════════════════════
 INVALID_XML_RE = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F]")
 BARE_AMP_RE    = re.compile(r"&(?!#\d+;|#x[0-9a-fA-F]+;|[a-zA-Z][\w.\-]*;)")
-ATTACK_KW    = {"strike","attack","bomb","drone","missile","kill","explosion","blast","airstrike","shelling"}
-DIPLOMACY_KW = {"sanction","deal","negotiat","talk","diplomat","treaty","ceasefire","nuclear deal","peace"}
-MILITARY_KW  = {"deploy","military","navy","troops","base","exercise","fleet","irgc","pentagon","carrier","nato"}
-ECONOMY_KW   = {"oil","price","sanction","trade","crude","energy","export","bitcoin","stock","gas","forex"}
-REGION_MAP = {
-    "iran":("Iran/Gulf",32.43,53.69),"tehran":("Iran/Gulf",35.69,51.39),"irgc":("Iran/Gulf",35.69,51.39),
-    "hormuz":("Persian Gulf",26.57,56.27),"houthi":("Yemen",15.35,44.21),"yemen":("Yemen",15.55,48.52),
-    "baghdad":("Iraq",33.34,44.40),"iraq":("Iraq",33.22,43.68),"damascus":("Syria",33.51,36.29),
-    "israel":("Israel",31.05,34.86),"gaza":("Gaza",31.35,34.31),"beirut":("Lebanon",33.89,35.50),
-    "saudi":("Saudi Arabia",23.89,45.08),"riyadh":("Saudi Arabia",24.69,46.72),
-    "kyiv":("Ukraine",50.45,30.52),"ukraine":("Ukraine",49.00,32.00),"donbas":("Ukraine",48.00,37.50),
-    "moscow":("Russia",55.75,37.62),"russia":("Russia",61.52,105.31),
-    "taiwan":("Taiwan",25.03,121.56),"beijing":("China",39.91,116.39),
-    "korea":("Korea",37.55,126.99),"pyongyang":("North Korea",39.02,125.75),
-    "washington":("USA",38.91,-77.04),"pentagon":("USA",38.87,-77.05),
+ATTACK_KW = {
+    "airstrike", "attack", "blast", "bomb", "clash", "conflict", "drone", "explosion",
+    "fight", "fighting", "kill", "missile", "offensive", "raid", "shelling", "siege",
+    "strike", "war",
 }
-RELEVANCE_KW = {"iran","us ","usa","america","irgc","nuclear","sanction","hormuz","gulf","houthi",
-                "middle east","war","attack","missile","drone","military","pentagon","tehran",
-                "ukraine","russia","nato","taiwan","china","korea","dprk","conflict","offensive","ceasefire"}
+DIPLOMACY_KW = {
+    "ceasefire", "deal", "diplomat", "negotiat", "peace", "sanction", "summit", "talk",
+    "treaty", "truce",
+}
+MILITARY_KW = {
+    "army", "base", "carrier", "exercise", "fleet", "forces", "irgc", "military", "navy",
+    "nato", "pentagon", "rocket", "troops", "warship",
+}
+ECONOMY_KW = {
+    "bitcoin", "commodity", "crude", "energy", "export", "forex", "fuel", "gas", "gold",
+    "inflation", "lng", "market", "oil", "pipeline", "price", "shipping", "stock", "trade",
+}
+REGION_MAP = {
+    "strait of hormuz": ("Persian Gulf", 26.57, 56.27),
+    "south china sea": ("South China Sea", 13.00, 114.00),
+    "red sea": ("Red Sea", 20.00, 38.00),
+    "black sea": ("Black Sea", 44.00, 35.00),
+    "west bank": ("West Bank", 31.95, 35.20),
+    "gaza": ("Gaza", 31.35, 34.31),
+    "tel aviv": ("Israel", 32.09, 34.78),
+    "jerusalem": ("Israel", 31.78, 35.23),
+    "israel": ("Israel", 31.05, 34.86),
+    "lebanon": ("Lebanon", 33.85, 35.86),
+    "beirut": ("Lebanon", 33.89, 35.50),
+    "syria": ("Syria", 35.00, 38.50),
+    "damascus": ("Syria", 33.51, 36.29),
+    "iran": ("Iran/Gulf", 32.43, 53.69),
+    "tehran": ("Iran/Gulf", 35.69, 51.39),
+    "irgc": ("Iran/Gulf", 35.69, 51.39),
+    "hormuz": ("Persian Gulf", 26.57, 56.27),
+    "houthi": ("Yemen", 15.35, 44.21),
+    "yemen": ("Yemen", 15.55, 48.52),
+    "iraq": ("Iraq", 33.22, 43.68),
+    "baghdad": ("Iraq", 33.34, 44.40),
+    "saudi arabia": ("Saudi Arabia", 23.89, 45.08),
+    "saudi": ("Saudi Arabia", 23.89, 45.08),
+    "riyadh": ("Saudi Arabia", 24.69, 46.72),
+    "uae": ("UAE", 24.30, 54.37),
+    "dubai": ("UAE", 25.20, 55.27),
+    "qatar": ("Qatar", 25.28, 51.52),
+    "turkey": ("Turkey", 39.00, 35.00),
+    "ankara": ("Turkey", 39.93, 32.86),
+    "ukraine": ("Ukraine", 49.00, 32.00),
+    "kyiv": ("Ukraine", 50.45, 30.52),
+    "donbas": ("Ukraine", 48.00, 37.50),
+    "odesa": ("Ukraine", 46.48, 30.73),
+    "russia": ("Russia", 61.52, 105.31),
+    "moscow": ("Russia", 55.75, 37.62),
+    "belarus": ("Belarus", 53.71, 27.95),
+    "poland": ("Poland", 52.23, 21.01),
+    "germany": ("Germany", 52.52, 13.41),
+    "france": ("France", 48.86, 2.35),
+    "london": ("United Kingdom", 51.51, -0.13),
+    "britain": ("United Kingdom", 55.38, -3.44),
+    "united kingdom": ("United Kingdom", 55.38, -3.44),
+    "china": ("China", 39.91, 116.39),
+    "beijing": ("China", 39.91, 116.39),
+    "taiwan": ("Taiwan", 25.03, 121.56),
+    "taipei": ("Taiwan", 25.03, 121.56),
+    "japan": ("Japan", 35.68, 139.69),
+    "tokyo": ("Japan", 35.68, 139.69),
+    "south korea": ("South Korea", 37.57, 126.98),
+    "seoul": ("South Korea", 37.57, 126.98),
+    "north korea": ("North Korea", 39.02, 125.75),
+    "pyongyang": ("North Korea", 39.02, 125.75),
+    "myanmar": ("Myanmar", 19.75, 96.10),
+    "philippines": ("Philippines", 14.60, 120.98),
+    "manila": ("Philippines", 14.60, 120.98),
+    "vietnam": ("Vietnam", 21.03, 105.85),
+    "india": ("India", 28.61, 77.21),
+    "new delhi": ("India", 28.61, 77.21),
+    "pakistan": ("Pakistan", 33.68, 73.05),
+    "bangladesh": ("Bangladesh", 23.81, 90.41),
+    "sudan": ("Sudan", 15.50, 32.56),
+    "khartoum": ("Sudan", 15.50, 32.56),
+    "ethiopia": ("Ethiopia", 9.03, 38.74),
+    "eritrea": ("Horn of Africa", 15.18, 39.78),
+    "somalia": ("Somalia", 2.05, 45.32),
+    "sahel": ("Sahel", 16.00, 1.00),
+    "niger": ("Niger", 13.51, 2.11),
+    "mali": ("Mali", 12.64, -8.00),
+    "burkina faso": ("Burkina Faso", 12.37, -1.53),
+    "dr congo": ("DR Congo", -4.32, 15.31),
+    "democratic republic of the congo": ("DR Congo", -4.32, 15.31),
+    "congo": ("DR Congo", -4.32, 15.31),
+    "nigeria": ("Nigeria", 9.08, 7.40),
+    "libya": ("Libya", 32.89, 13.19),
+    "venezuela": ("Venezuela", 10.48, -66.90),
+    "haiti": ("Haiti", 18.54, -72.34),
+    "mexico": ("Mexico", 19.43, -99.13),
+    "colombia": ("Colombia", 4.71, -74.07),
+    "brazil": ("Brazil", -15.79, -47.88),
+    "washington": ("USA", 38.91, -77.04),
+    "pentagon": ("USA", 38.87, -77.05),
+    "united states": ("USA", 38.91, -77.04),
+    "usa": ("USA", 38.91, -77.04),
+    "america": ("USA", 38.91, -77.04),
+}
+TOPIC_KW = {
+    "airstrike", "attack", "ceasefire", "china", "conflict", "crude", "cyber", "deal", "defense",
+    "diplom", "drone", "election unrest", "energy", "ethiopia", "gaza", "global security", "haiti",
+    "hormuz", "houthi", "humanitarian", "india", "iran", "israel", "korea", "lebanon", "market",
+    "military", "missile", "myanmar", "nato", "navy", "nuclear", "oil", "pakistan", "palestin",
+    "peace", "red sea", "refugee", "russia", "sahel", "sanction", "shipping", "south china sea",
+    "sudan", "syria", "taiwan", "trade", "troops", "ukraine", "venezuela", "war", "yemen",
+}
+RELEVANCE_KW = set(REGION_MAP.keys()) | TOPIC_KW
+WORLD_NEWS_QUERIES = [
+    "Middle East conflict Israel Gaza Iran Syria Lebanon Yemen Red Sea shipping",
+    "Ukraine Russia war NATO Black Sea Europe security sanctions",
+    "China Taiwan South China Sea Korea military security",
+    "Sudan Sahel DR Congo Ethiopia Africa conflict humanitarian",
+    "Haiti Venezuela Latin America unrest sanctions security",
+    "oil shipping sanctions cyberattack military global markets",
+]
 RSS_FEEDS = {
-    "BBC World":        "http://feeds.bbci.co.uk/news/world/rss.xml",
-    "Al Jazeera":       "https://www.aljazeera.com/xml/rss/all.xml",
-    "Reuters World":    "https://rsshub.app/reuters/world",
-    "Guardian World":   "https://www.theguardian.com/world/rss",
-    "AP Top News":      "https://rsshub.app/apnews/topics/apf-topnews",
-    "Guardian Iran":    "https://www.theguardian.com/world/iran/rss",
-    "Kyiv Independent": "https://kyivindependent.com/feed/",
-    "Defense News":     "https://www.defensenews.com/rss/",
+    # ── Tier-1 wire / broadcast ──────────────────────────────────────────────
+    "BBC World":          "http://feeds.bbci.co.uk/news/world/rss.xml",
+    "Al Jazeera":         "https://www.aljazeera.com/xml/rss/all.xml",
+    "Reuters World":      "https://rsshub.app/reuters/world",
+    "Guardian World":     "https://www.theguardian.com/world/rss",
+    "AP Top News":        "https://rsshub.app/apnews/topics/apf-topnews",
+    "France24":           "https://www.france24.com/en/rss",
+    "DW World":           "https://rss.dw.com/rdf/rss-en-all",
+    "NPR World":          "https://feeds.npr.org/1004/rss.xml",
+    # ── Conflict / security specialists ─────────────────────────────────────
+    "Kyiv Independent":   "https://kyivindependent.com/feed/",
+    "Defense News":       "https://www.defensenews.com/rss/",
+    "Breaking Defense":   "https://breakingdefense.com/feed/",
+    "USNI News":          "https://news.usni.org/feed",
+    "War on the Rocks":   "https://warontherocks.com/feed/",
+    "The War Zone":       "https://www.thedrive.com/the-war-zone/feed",
+    "Foreign Policy":     "https://foreignpolicy.com/feed/",
+    # ── Middle East / regional ───────────────────────────────────────────────
+    "Middle East Eye":    "https://www.middleeasteye.net/rss",
+    "Arab News":          "https://www.arabnews.com/rss.xml",
+    "Times of Israel":    "https://www.timesofisrael.com/feed/",
+    "Jerusalem Post":     "https://www.jpost.com/Rss/RssFeedsHeadlines.aspx",
+    "Haaretz":            "https://www.haaretz.com/srv/haaretz-main.xml",
+    "Dawn Pakistan":      "https://www.dawn.com/feeds/home",
+    # ── Energy / commodities ─────────────────────────────────────────────────
+    "OilPrice.com":       "https://oilprice.com/rss/main",
+    "Reuters Energy":     "https://rsshub.app/reuters/topic/energy",
+    # ── Asia-Pacific ─────────────────────────────────────────────────────────
+    "Asia Times":         "https://asiatimes.com/feed/",
+    "SCMP World":         "https://www.scmp.com/rss/91/feed",
+    # ── International / institutional ───────────────────────────────────────
+    "UN News":            "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+    "RFERL Security":     "https://www.rferl.org/api/zpqopvezyq",
 }
 NEWSAPI_EP = "https://newsapi.org/v2/everything"
 GNEWS_EP   = "https://gnews.io/api/v4/search"
@@ -676,8 +803,8 @@ def classify(title, desc):
               "military": len(MILITARY_KW & words), "economy": len(ECONOMY_KW & words)}
     atype = max(scores, key=scores.get) if max(scores.values()) > 0 else "military"
     sev = min(10, 1 + scores["attack"] * 2 + scores["military"])
-    region, lat, lon = "Middle East", 29.0, 53.0
-    for kw, (r, la, lo) in REGION_MAP.items():
+    region, lat, lon = "World", None, None
+    for kw, (r, la, lo) in sorted(REGION_MAP.items(), key=lambda item: len(item[0]), reverse=True):
         if kw in text: region, lat, lon = r, la, lo; break
     return {"type": atype, "lat": lat, "lon": lon, "location": region, "severity": sev}
 
@@ -701,14 +828,15 @@ async def parse_rss(client, name, url):
             meta = classify(title, desc)
             articles.append({"id": _aid(title, link), "title": title.strip(),
                 "description": re.sub(r"<[^>]+>", "", desc or "")[:250].strip(),
-                "source": name, "url": link.strip() or "#", "published_at": pub, **meta})
+                "source": name, "url": link.strip() or "#", "published_at": pub,
+                "ingested_at": datetime.now(timezone.utc).isoformat(), **meta})
         logger.info("RSS %s: used=%d", name, len(articles))
     except Exception as e: _rwarn(name, e)
     return articles
 
 async def fetch_gdelt(client):
     articles = []
-    for q in ["Iran United States military","Ukraine Russia offensive","Houthi attack Red Sea","Taiwan China military"]:
+    for q in WORLD_NEWS_QUERIES:
         try:
             r = await client.get(GDELT_EP, params={"query":q,"mode":"artlist","maxrecords":20,"format":"json","timespan":"12h","sort":"DateDesc"}, timeout=12)
             r.raise_for_status()
@@ -718,14 +846,16 @@ async def fetch_gdelt(client):
                 meta = classify(title, "")
                 articles.append({"id": _aid(title, art.get("url","")), "title": title,
                     "description": f"Coverage: {art.get('seenbycount','N/A')} outlets",
-                    "source": art.get("domain","GDELT"), "url": art.get("url","#"), "published_at": art.get("seendate",""), **meta})
+                    "source": art.get("domain","GDELT"), "url": art.get("url","#"),
+                    "published_at": art.get("seendate",""),
+                    "ingested_at": datetime.now(timezone.utc).isoformat(), **meta})
         except Exception as e: logger.warning("GDELT(%r): %r", q, e)
     return articles
 
 async def fetch_newsapi(client):
     if not NEWS_API_KEY: return []
     articles = []
-    for q in ["Iran US war OR Iran attack OR Houthi","Ukraine Russia war OR Ukraine offensive","Taiwan China military"]:
+    for q in WORLD_NEWS_QUERIES:
         try:
             r = await client.get(NEWSAPI_EP, params={"q":q,"sortBy":"publishedAt","language":"en","pageSize":15,"apiKey":NEWS_API_KEY}, timeout=12)
             r.raise_for_status()
@@ -736,14 +866,15 @@ async def fetch_newsapi(client):
                 meta = classify(title, desc)
                 articles.append({"id": _aid(title, art.get("url","")), "title": title, "description": desc[:250],
                     "source": (art.get("source") or {}).get("name","NewsAPI"), "url": art.get("url","#"),
-                    "published_at": art.get("publishedAt",""), **meta})
+                    "published_at": art.get("publishedAt",""),
+                    "ingested_at": datetime.now(timezone.utc).isoformat(), **meta})
         except Exception as e: logger.warning("NewsAPI: %r", e)
     return articles
 
 async def fetch_gnews(client):
     if not GNEWS_API_KEY: return []
     articles = []
-    for q in ["Iran US military","Ukraine war","Taiwan China"]:
+    for q in WORLD_NEWS_QUERIES:
         try:
             r = await client.get(GNEWS_EP, params={"q":q,"lang":"en","max":10,"apikey":GNEWS_API_KEY}, timeout=12)
             r.raise_for_status()
@@ -752,7 +883,8 @@ async def fetch_gnews(client):
                 meta = classify(title, desc)
                 articles.append({"id": _aid(title, art.get("url","")), "title": title, "description": desc[:250],
                     "source": (art.get("source") or {}).get("name","GNews"), "url": art.get("url","#"),
-                    "published_at": art.get("publishedAt",""), **meta})
+                    "published_at": art.get("publishedAt",""),
+                    "ingested_at": datetime.now(timezone.utc).isoformat(), **meta})
         except Exception as e: logger.warning("GNews: %r", e)
     return articles
 
@@ -806,6 +938,7 @@ async def fetch_reddit(client: httpx.AsyncClient) -> list[dict]:
                 "source": f"r/{sub}",
                 "url": url,
                 "published_at": datetime.fromtimestamp(created, timezone.utc).isoformat() if created else "",
+                "ingested_at": datetime.now(timezone.utc).isoformat(),
                 "platform": "reddit",
                 "upvotes": score,
                 **meta,
@@ -857,6 +990,7 @@ async def fetch_twitter(client: httpx.AsyncClient) -> list[dict]:
                     "source": f"@{username}",
                     "url": f"https://x.com/{username}/status/{tid}",
                     "published_at": tw.get("created_at", ""),
+                    "ingested_at": datetime.now(timezone.utc).isoformat(),
                     "platform": "twitter",
                     "likes": likes,
                     **meta,
@@ -902,7 +1036,9 @@ async def _fetch_news_payload_uncached(limit: int) -> dict:
     seen, deduped = set(), []
     for a in all_articles:
         if a.get("id") not in seen: seen.add(a["id"]); deduped.append(a)
-    deduped.sort(key=lambda a: (-a.get("severity",1), a.get("published_at","") or ""))
+    # Sort: newest published_at first (stable), then by severity descending
+    deduped.sort(key=lambda a: (a.get("published_at") or ""), reverse=True)
+    deduped.sort(key=lambda a: -a.get("severity", 1))
     deduped = deduped[:limit]
     attack_count = sum(1 for a in deduped if a.get("type") == "attack")
     ratio = attack_count / len(deduped) if deduped else 0
@@ -1350,6 +1486,92 @@ async def get_shortage(scenario: str = Query(default="base")):
         "countries": impacts,
     }
 
+@app.get("/api/osint")
+async def get_osint_media(
+    query: str = Query(default="drone missile attack", max_length=200),
+    limit: int = Query(default=25, ge=5, le=50),
+):
+    """Proxy GDELT for geolocated OSINT attack media / public conflict footage."""
+    cache_key = f"osint_{hashlib.md5(f'{query}_{limit}'.encode()).hexdigest()}"
+    cached = _cache_get(cache_key, ttl=300)  # 5-min OSINT cache
+    if cached:
+        return cached
+
+    items: list[dict] = []
+    q_enc = query.replace(" ", "%20")
+
+    async with httpx.AsyncClient(
+        headers={"User-Agent": "ConflictDashboard/3.0"},
+        timeout=15.0,
+        follow_redirects=True,
+    ) as client:
+        # 1 — GDELT doc API: articles with social images
+        try:
+            doc_url = (
+                f"https://api.gdeltproject.org/api/v2/doc/doc"
+                f"?query={q_enc}&mode=artlist&maxrecords={limit}&format=json&timespan=3d"
+            )
+            resp = await client.get(doc_url)
+            data = resp.json()
+            for art in data.get("articles", []):
+                url = art.get("url", "")
+                if not url:
+                    continue
+                items.append({
+                    "title": art.get("title", ""),
+                    "url": url,
+                    "source": art.get("domain", ""),
+                    "date": art.get("seendate", ""),
+                    "country": art.get("sourcecountry", ""),
+                    "language": art.get("language", ""),
+                    "image_url": art.get("socialimage", ""),
+                    "lat": None,
+                    "lon": None,
+                })
+        except Exception as e:
+            logger.warning("OSINT doc search error: %r", e)
+
+        # 2 — GDELT GEO API: geolocated events → adds lat/lon to existing items or new ones
+        try:
+            geo_url = (
+                f"https://api.gdeltproject.org/api/v2/geo/geo"
+                f"?query={q_enc}&timespan=3d&format=geojson&maxrecords={min(limit, 25)}"
+            )
+            resp = await client.get(geo_url)
+            geo_data = resp.json()
+            for feat in geo_data.get("features", []):
+                props = feat.get("properties", {})
+                coords = (feat.get("geometry") or {}).get("coordinates") or [None, None]
+                lon_v, lat_v = (coords[0] if len(coords) > 0 else None), (coords[1] if len(coords) > 1 else None)
+                furl = props.get("url") or props.get("htmlurl", "")
+                if not furl or lat_v is None or lon_v is None:
+                    continue
+                existing = next((it for it in items if it["url"] == furl), None)
+                if existing:
+                    existing["lat"] = lat_v
+                    existing["lon"] = lon_v
+                else:
+                    items.append({
+                        "title": props.get("name") or props.get("title", ""),
+                        "url": furl,
+                        "source": props.get("domain", ""),
+                        "date": props.get("seendate", ""),
+                        "country": props.get("countrycode", ""),
+                        "language": props.get("lang", ""),
+                        "image_url": props.get("socialimage", ""),
+                        "lat": lat_v,
+                        "lon": lon_v,
+                    })
+        except Exception as e:
+            logger.warning("OSINT geo search error: %r", e)
+
+    out = {"items": items[:limit], "query": query, "count": len(items), "fetched_at": datetime.now(timezone.utc).isoformat()}
+    if items:
+        _cache_set(cache_key, out)
+    return out
+
+
+
 @app.get("/api/health")
 async def get_health():
     return {"status":"ok","api_keys":{"news_api":bool(NEWS_API_KEY),"gnews":bool(GNEWS_API_KEY),
@@ -1408,7 +1630,7 @@ async def _ws_loop(ws: WebSocket):
                     last_market = now
                 except Exception as e:
                     logger.warning("WS market: %r", e)
-            if now - last_news >= 120:
+            if now - last_news >= 60:  # push news every 60s (matches NEWS_CACHE_TTL)
                 try:
                     news = await _build_news_payload(NEWS_BASE_LIMIT)
                     if not await _ws_send_json(ws, "news", news):

@@ -244,6 +244,48 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
 .cc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
 .cc-stat{font-size:9px;color:var(--t2);text-align:center}
 .cc-stat strong{display:block;font-size:11px;color:var(--t1)}
+
+/* ── CAUSALITY GRAPH OVERLAY ── */
+#graph-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--bg0);z-index:200;flex-direction:column;display:none}
+#graph-container{flex:1;position:relative;background:var(--bg0)}
+#graph-node-detail{position:absolute;bottom:12px;left:12px;z-index:10;background:rgba(8,12,16,.94);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;min-width:220px;max-width:320px;display:none;pointer-events:none}
+.graph-chain-btn{background:var(--bg4);border:1px solid var(--border);color:var(--t2);border-radius:5px;padding:3px 9px;font-size:9px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.graph-chain-btn:hover,.graph-chain-btn.active{background:rgba(88,166,255,.12);border-color:var(--blue);color:var(--blue)}
+.graph-legend{display:flex;flex-wrap:wrap;gap:6px;padding:6px 12px;background:var(--bg1);border-top:1px solid var(--border);flex-shrink:0}
+.gl-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--t2)}
+.gl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── OSINT MEDIA ── */
+.osint-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;cursor:pointer;transition:all .15s;display:flex;gap:8px}
+.osint-card:hover{background:var(--bg4);border-color:rgba(88,166,255,.3)}
+.osint-thumb{width:58px;height:42px;object-fit:cover;border-radius:4px;flex-shrink:0}
+.osint-thumb-ph{width:58px;height:42px;border-radius:4px;flex-shrink:0;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:20px}
+.osint-info{flex:1;min-width:0}
+.osint-title{font-size:10px;font-weight:500;color:var(--t1);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:3px}
+.osint-meta{font-size:9px;color:var(--t3);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.osint-geo{font-size:9px;color:var(--blue);cursor:pointer}
+.osint-geo:hover{text-decoration:underline}
+
+/* ── SANCTIONS TRACKER ── */
+.sanction-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:9px 11px;margin-bottom:5px}
+.sanction-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px}
+.sanction-name{font-size:11px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:5px}
+.sanction-scope{font-size:8px;padding:2px 5px;border-radius:3px;font-weight:700;letter-spacing:.04em}
+.scope-comp{background:rgba(248,81,73,.15);color:var(--red)}.scope-sect{background:rgba(88,166,255,.15);color:var(--blue)}.scope-targ{background:rgba(163,113,247,.15);color:var(--purple)}.scope-broad{background:rgba(210,153,34,.15);color:var(--amber)}
+.sanction-impact-bar{height:3px;background:var(--bg4);border-radius:2px;margin-bottom:4px}
+.sanction-impact-fill{height:100%;border-radius:2px;transition:width .8s}
+.sanction-by{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px}
+.sanc-by-tag{font-size:9px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--t2)}
+.sanction-measures{font-size:9px;color:var(--t3);line-height:1.7}
+.sanction-workaround{font-size:9px;color:var(--amber);line-height:1.7;margin-top:3px}
+
+/* freshness badges */
+.fresh-bar{padding:3px 8px 2px;font-size:9px;color:var(--t2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap}
+.fbadge{padding:1px 5px;border-radius:3px;font-size:8px;font-weight:700;white-space:nowrap}
+.fbadge.live{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.fbadge.stale{background:rgba(210,153,34,.15);color:var(--amber);border:1px solid rgba(210,153,34,.3)}
+.fbadge.err{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+.src-health{display:flex;gap:4px;margin-left:auto;align-items:center}
 </style>
 </head>
 <body>
@@ -302,11 +344,48 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M5 1a2 2 0 0 0-2 2v1H2a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2zm0 1h6a1 1 0 0 1 1 1v1H4V3a1 1 0 0 1 1-1M2 5h12a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1"/></svg>
       LOG
     </button>
+    <div class="sbsep"></div>
+    <button class="sbtn" id="sb-graph" onclick="setTab('graph')" title="Causality Chain Graph">
+      <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="2" cy="8" r="1.5"/><circle cx="8" cy="2" r="1.5"/><circle cx="14" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/><circle cx="8" cy="8" r="1.5"/><line x1="3.5" y1="8" x2="6.5" y2="8" stroke="currentColor" stroke-width="1.2"/><line x1="9.5" y1="8" x2="12.5" y2="8" stroke="currentColor" stroke-width="1.2"/><line x1="8" y1="3.5" x2="8" y2="6.5" stroke="currentColor" stroke-width="1.2"/><line x1="8" y1="9.5" x2="8" y2="12.5" stroke="currentColor" stroke-width="1.2"/></svg>
+      GRAPH
+    </button>
+    <button class="sbtn" id="sb-osint" onclick="setTab('osint')" title="OSINT Attack Media">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/></svg>
+      OSINT
+    </button>
+    <button class="sbtn" id="sb-sanctions" onclick="setTab('sanctions')" title="Sanctions Tracker">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/></svg>
+      SANC
+    </button>
   </div>
 
   <!-- MAP -->
   <div id="map-container">
     <div id="map"></div>
+
+    <!-- LIVE NEWS GRAPH OVERLAY (replaces map when GRAPH tab is active) -->
+    <div id="graph-overlay">
+      <div style="height:42px;background:var(--bg1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0">
+        <span style="font-size:11px;font-weight:700;color:var(--blue)">⬡ LIVE NEWS GRAPH</span>
+        <span style="font-size:9px;color:var(--t2)">API-fed world news clusters · click any node for details</span>
+        <div style="margin-left:8px;display:flex;gap:4px;flex-wrap:wrap" id="chain-btns"></div>
+        <button class="icon-btn" style="margin-left:auto" onclick="setTab('news')">✕ Back to Map</button>
+      </div>
+      <div id="graph-container"></div>
+      <div class="graph-legend">
+        <div class="gl-item"><div class="gl-dot" style="background:#f85149"></div>Conflict</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#fb923c"></div>Supply Chain</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#d29922"></div>Economic</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#a371f7"></div>Humanitarian</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#58a6ff"></div>Political</div>
+        <div class="gl-item"><div class="gl-dot" style="background:#39c5cf"></div>Sanctions</div>
+      </div>
+      <div id="graph-node-detail">
+        <div class="mib-title" id="gnd-type" style="margin-bottom:4px">NODE TYPE</div>
+        <div style="font-size:12px;font-weight:600;color:var(--t1);margin-bottom:5px;line-height:1.4" id="gnd-title"></div>
+        <div style="font-size:10px;color:var(--t2);line-height:1.5" id="gnd-detail"></div>
+      </div>
+    </div>
     <div class="mctrl">
       <button class="mbtn active" id="mb-all" onclick="setMapFilter('all')">All Events</button>
       <button class="mbtn" id="mb-attack" onclick="setMapFilter('attack')">Strikes</button>
@@ -354,6 +433,9 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
       <button class="ptab" id="pt-intel" onclick="setRTab('intel')">Intel</button>
       <button class="ptab" id="pt-charts" onclick="setRTab('charts')">Stats</button>
       <button class="ptab" id="pt-events" onclick="setRTab('events')">Log</button>
+      <button class="ptab" id="pt-graph" onclick="setTab('graph')">Graph</button>
+      <button class="ptab" id="pt-osint" onclick="setRTab('osint')">OSINT</button>
+      <button class="ptab" id="pt-sanctions" onclick="setRTab('sanctions')">Sanctions</button>
     </div>
 
     <!-- NEWS -->
@@ -366,6 +448,12 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
         <button class="fbtn" onclick="filterNews('economy',this)">Economy</button>
         <button class="fbtn fbtn-reddit" onclick="filterNews('reddit',this)">Reddit</button>
         <button class="fbtn fbtn-twitter" onclick="filterNews('twitter',this)">𝕏 Twitter</button>
+      </div>
+      <!-- freshness bar — updated by JS -->
+      <div class="fresh-bar" id="news-fresh-bar">
+        <span id="fresh-fetch-badge" class="fbadge">–</span>
+        <span id="fresh-src-ok" style="color:var(--t3)">sources loading…</span>
+        <span class="src-health" id="src-health-row"></span>
       </div>
       <div id="news-feed"><div class="loading-msg"><div class="spin"></div>Connecting to live feed…</div></div>
     </div>
@@ -415,6 +503,39 @@ body{font-family:var(--font);background:var(--bg0);color:var(--t1);height:100vh;
       <div style="padding:6px 10px 5px;border-bottom:1px solid var(--border);font-size:9px;color:var(--t2);flex-shrink:0">ROLLING EVENT LOG — <span id="log-count">0</span> EVENTS</div>
       <div id="event-log"></div>
     </div>
+
+    <!-- GRAPH -->
+    <div class="tab-body" id="tb-graph">
+      <div style="padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;color:var(--t2);flex-shrink:0">
+        LIVE WORLD NEWS GRAPH — click a cluster to open graph
+      </div>
+      <div class="scroll-panel" id="graph-panel"></div>
+    </div>
+
+    <!-- OSINT -->
+    <div class="tab-body" id="tb-osint">
+      <div style="padding:6px 8px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="display:flex;gap:5px;align-items:center">
+          <input id="osint-search" placeholder="drone attack Yemen, Kharkiv missile…"
+            style="flex:1;background:var(--bg4);border:1px solid var(--border);color:var(--t1);border-radius:5px;padding:4px 8px;font-size:10px;font-family:var(--font);outline:none"
+            onkeydown="if(event.key==='Enter')searchOSINT()"/>
+          <button class="icon-btn" onclick="searchOSINT()">Search</button>
+        </div>
+        <div style="font-size:9px;color:var(--t3);margin-top:3px">Public OSINT media — powered by GDELT · Geolocated items marked on map</div>
+      </div>
+      <div class="scroll-panel" id="osint-list">
+        <div class="loading-msg" style="color:var(--t2)">Search for attack footage, missile strikes, drone incidents…</div>
+      </div>
+    </div>
+
+    <!-- SANCTIONS -->
+    <div class="tab-body" id="tb-sanctions">
+      <div style="padding:6px 8px;border-bottom:1px solid var(--border);font-size:9px;color:var(--t2);flex-shrink:0">
+        ACTIVE SANCTIONS REGIMES — US OFAC · EU · UN · UK
+      </div>
+      <div class="scroll-panel" id="sanctions-panel"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1092,7 +1213,7 @@ function relTime(s){
 }
 
 // country → flag from article location string
-const LOC_FLAG={'Iran/Gulf':'🇮🇷','Yemen':'🇾🇪','Iraq':'🇮🇶','Syria':'🇸🇾','Israel':'🇮🇱','Gaza':'🇵🇸','Lebanon':'🇱🇧','Saudi Arabia':'🇸🇦','USA':'🇺🇸','Ukraine':'🇺🇦','Russia':'🇷🇺','China':'🇨🇳','Taiwan':'🇹🇼','South Korea':'🇰🇷','North Korea':'🇰🇵','Middle East':'🕌','Persian Gulf':'🌊'};
+const LOC_FLAG={'Iran/Gulf':'🇮🇷','Yemen':'🇾🇪','Iraq':'🇮🇶','Syria':'🇸🇾','Israel':'🇮🇱','Gaza':'🇵🇸','Lebanon':'🇱🇧','Saudi Arabia':'🇸🇦','UAE':'🇦🇪','Qatar':'🇶🇦','Turkey':'🇹🇷','USA':'🇺🇸','Ukraine':'🇺🇦','Russia':'🇷🇺','Belarus':'🇧🇾','Poland':'🇵🇱','Germany':'🇩🇪','France':'🇫🇷','United Kingdom':'🇬🇧','China':'🇨🇳','Taiwan':'🇹🇼','Japan':'🇯🇵','South Korea':'🇰🇷','North Korea':'🇰🇵','Myanmar':'🇲🇲','Philippines':'🇵🇭','Vietnam':'🇻🇳','India':'🇮🇳','Pakistan':'🇵🇰','Bangladesh':'🇧🇩','Sudan':'🇸🇩','Ethiopia':'🇪🇹','Somalia':'🇸🇴','Sahel':'🌍','DR Congo':'🇨🇩','Nigeria':'🇳🇬','Libya':'🇱🇾','Venezuela':'🇻🇪','Haiti':'🇭🇹','Mexico':'🇲🇽','Colombia':'🇨🇴','Brazil':'🇧🇷','Middle East':'🕌','Persian Gulf':'🌊','Red Sea':'🌊','Black Sea':'🌊','South China Sea':'🌊','Horn of Africa':'🌍','World':'🌐'};
 
 function renderFeed(){
   const el=document.getElementById('news-feed');
@@ -1112,8 +1233,14 @@ function renderFeed(){
     const plat=a.platform==='reddit'?'<span class="plat-badge reddit">Reddit</span>':
                a.platform==='twitter'?'<span class="plat-badge twitter">𝕏</span>':'';
     const desc=a.description?`<div style="font-size:9px;color:var(--t3);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.description}</div>`:'';
+    // freshness: show ingested badge if article was fetched very recently
+    const pubAge=a.published_at?(Date.now()-new Date(a.published_at).getTime())/1000:null;
+    const ingAge=a.ingested_at?(Date.now()-new Date(a.ingested_at).getTime())/1000:null;
+    const freshBadge=ingAge!==null&&ingAge<120?'<span class="fbadge live" style="margin-left:3px;font-size:7px">NEW</span>':'';
+    const ingestHint=a.ingested_at&&pubAge!==null&&ingAge!==null&&Math.abs(pubAge-ingAge)>300
+      ?`<span title="Ingested ${relTime(a.ingested_at)}" style="font-size:8px;color:var(--t3);margin-left:3px">↓${relTime(a.ingested_at)}</span>`:'';
     return`<a class="ncard ${a.type}" href="${a.url}" target="_blank" rel="noopener">
-      <div class="cmeta"><span class="ctag ${a.type}">${a.type}</span>${plat}<span class="cflag" title="${a.location}">${lf}</span><span class="ctime">${relTime(a.published_at)}</span></div>
+      <div class="cmeta"><span class="ctag ${a.type}">${a.type}</span>${plat}${freshBadge}<span class="cflag" title="${a.location}">${lf}</span><span class="ctime">${relTime(a.published_at)}${ingestHint}</span></div>
       <div class="ctitle">${a.title}</div>
       ${desc}
       <div class="cfoot"><span class="csrc">${a.source}</span><span class="cloc">${a.location||''}</span></div>
@@ -1327,7 +1454,18 @@ function updateTicker(c={},cm={},s={}){
 // ════════════════════════════════════════════════
 function setTab(tab){
   document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('sb-'+tab).classList.add('active');
+  const sbEl = document.getElementById('sb-'+tab);
+  if(sbEl) sbEl.classList.add('active');
+  // show/hide causality graph overlay
+  const overlay = document.getElementById('graph-overlay');
+  if(tab==='graph'){
+    if(!allArticles.length) fetchNews();
+    overlay.style.display='flex';
+    buildChainButtons();
+    requestAnimationFrame(()=>renderGraphChain(activeChain));
+  } else {
+    overlay.style.display='none';
+  }
   setRTab(tab);
 }
 
@@ -1344,6 +1482,8 @@ function setRTab(tab){
   if(tab==='shortage') renderShortagePanel();
   if(tab==='intel') renderIntel();
   if(tab==='charts') renderCharts();
+  if(tab==='graph') renderGraphPanel();
+  if(tab==='sanctions') renderSanctions();
 }
 
 // ════════════════════════════════════════════════
@@ -1376,6 +1516,8 @@ function updateNews(data){
   if(data.sources) sourceStatus=data.sources;
   document.getElementById('stat-total').textContent=allArticles.length;
   document.getElementById('stat-updated').textContent=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  updateFreshnessBar(data);
+  rebuildGraphData();
   renderFeed(); renderNewsMap(); calcThreat(); checkAlerts();
 }
 
@@ -1389,7 +1531,7 @@ function startHttpPolling(){
   setWS('polling');
   fetchNews();
   fetchMarkets();
-  newsPollInt=setInterval(fetchNews,120000);
+  newsPollInt=setInterval(fetchNews,60000);   // matches NEWS_CACHE_TTL=60s
   marketsPollInt=setInterval(fetchMarkets,30000);
 }
 function connectWS(){
@@ -1440,6 +1582,356 @@ function manualRefresh(){
   }
   fetchShips();
   fetchFlights();
+}
+
+// ════════════════════════════════════════════════
+// LIVE GRAPH OVERRIDES — derived from live API news instead of fixed scenarios
+// ════════════════════════════════════════════════
+layerGroups.osint = L.layerGroup();
+let activeChain='global';
+let liveGraphChains={};
+const GRAPH_COLORS={conflict:'#f85149',supply:'#fb923c',economic:'#d29922',humanitarian:'#a371f7',political:'#58a6ff',sanction:'#39c5cf'};
+const GRAPH_TYPE_META={attack:{group:'conflict',label:'Strike alerts'},diplomacy:{group:'political',label:'Diplomacy'},military:{group:'conflict',label:'Security'},economy:{group:'economic',label:'Markets'}};
+function escHtml(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function graphMeta(type){return GRAPH_TYPE_META[type]||{group:'political',label:'Coverage'};}
+function graphTs(item){const ts=Date.parse(item?.published_at||'');return Number.isFinite(ts)?ts:0;}
+function graphSortedArticles(items){return [...items].sort((a,b)=>(b.severity||0)-(a.severity||0)||graphTs(b)-graphTs(a));}
+function graphDominantType(items){const counts={};items.forEach(item=>{counts[item.type]=(counts[item.type]||0)+1;});return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0]||'military';}
+function graphWrap(text,maxLen=18,maxLines=3){
+  const clean=String(text||'Untitled').replace(/\s+/g,' ').trim();
+  if(!clean) return ['Untitled'];
+  const words=clean.split(' '),lines=[]; let line='';
+  for(const word of words){
+    const candidate=line?`${line} ${word}`:word;
+    if(candidate.length<=maxLen){ line=candidate; continue; }
+    if(line) lines.push(line); else lines.push(word.slice(0,maxLen));
+    line=word.length>maxLen?word.slice(0,maxLen):word;
+    if(lines.length===maxLines-1) break;
+  }
+  if(lines.length<maxLines&&line) lines.push(line);
+  const trimmed=lines.slice(0,maxLines);
+  if(trimmed.join(' ').length<clean.length){ const last=trimmed.length-1; trimmed[last]=trimmed[last].replace(/…?$/,'')+'…'; }
+  return trimmed;
+}
+function graphLabel(text,maxLen=18,maxLines=3){return graphWrap(text,maxLen,maxLines).join('\n');}
+function graphSlug(text){return String(text||'world').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'world';}
+function graphSourceSummary(items){const sources=[...new Set(items.map(a=>a.source).filter(Boolean))].slice(0,3);return sources.length?`Sources: ${sources.join(', ')}.`:'Sources updating live.';}
+function buildGlobalGraphChain(groupEntries,articles){
+  let nextId=1;
+  const nodes=[{id:nextId++,label:'World\nNews Graph',group:'political',title:`${articles.length} live articles across ${groupEntries.length} mapped regions. ${graphSourceSummary(articles)}`}];
+  const edges=[];
+  groupEntries.slice(0,5).forEach(([location,items])=>{
+    const top=graphSortedArticles(items)[0], dominant=graphDominantType(items), locId=nextId++;
+    nodes.push({id:locId,label:graphLabel(location,14,2),group:graphMeta(dominant).group,title:`${items.length} live reports in ${location}. ${graphSourceSummary(items)}`});
+    edges.push({from:1,to:locId,label:`${items.length} reports`});
+    if(top){
+      const storyId=nextId++;
+      nodes.push({id:storyId,label:graphLabel(top.title,22,3),group:graphMeta(top.type).group,title:`${top.source||'Unknown'} — ${top.description||top.title||''}`});
+      edges.push({from:locId,to:storyId,label:graphMeta(top.type).label.toLowerCase()});
+    }
+  });
+  return {label:'🌐 World Feed',summary:`Top live clusters built from ${articles.length} API-fed articles`,stats:{articles:articles.length,sources:new Set(articles.map(a=>a.source).filter(Boolean)).size,regions:groupEntries.length},nodes,edges};
+}
+function buildLocationGraphChain(location,items){
+  const sorted=graphSortedArticles(items), typeBuckets={};
+  sorted.forEach(item=>{(typeBuckets[item.type]=typeBuckets[item.type]||[]).push(item);});
+  let nextId=1;
+  const nodes=[{id:nextId++,label:graphLabel(location,16,2),group:graphMeta(graphDominantType(sorted)).group,title:`${sorted.length} live reports in ${location}. ${graphSourceSummary(sorted)}`}];
+  const edges=[];
+  Object.entries(typeBuckets).sort((a,b)=>b[1].length-a[1].length).slice(0,3).forEach(([type,bucket])=>{
+    const meta=graphMeta(type), typeId=nextId++;
+    nodes.push({id:typeId,label:`${meta.label}\n${bucket.length} reports`,group:meta.group,title:`${bucket.length} ${type} stories in ${location}. ${graphSourceSummary(bucket)}`});
+    edges.push({from:1,to:typeId,label:`${bucket.length}x`});
+    bucket.slice(0,2).forEach(article=>{
+      const articleId=nextId++;
+      nodes.push({id:articleId,label:graphLabel(article.title,22,3),group:meta.group,title:`${article.source||'Unknown'} — ${article.description||article.title||''}`});
+      edges.push({from:typeId,to:articleId,label:'report'});
+    });
+  });
+  return {label:`${LOC_FLAG[location]||'🌐'} ${location}`,summary:`${sorted.length} live reports · ${Object.keys(typeBuckets).length} themes · ${new Set(sorted.map(a=>a.source).filter(Boolean)).size} sources`,stats:{articles:sorted.length,sources:new Set(sorted.map(a=>a.source).filter(Boolean)).size,attacks:sorted.filter(a=>a.type==='attack').length},nodes,edges};
+}
+function buildLiveGraphChains(articles){
+  if(!articles.length) return {};
+  const localized=articles.filter(a=>a.location&&a.location!=='World'), grouped={};
+  (localized.length?localized:articles).forEach(article=>{
+    const key=localized.length?(article.location||'World'):'World';
+    (grouped[key]=grouped[key]||[]).push(article);
+  });
+  const groupEntries=Object.entries(grouped).sort((a,b)=>{
+    const countDiff=b[1].length-a[1].length;
+    if(countDiff) return countDiff;
+    const sevDiff=Math.max(...b[1].map(x=>x.severity||0))-Math.max(...a[1].map(x=>x.severity||0));
+    if(sevDiff) return sevDiff;
+    return graphTs(b[1][0])-graphTs(a[1][0]);
+  });
+  const chains={global:buildGlobalGraphChain(groupEntries,articles)};
+  groupEntries.slice(0,6).forEach(([location,items],idx)=>{chains[graphSlug(location)||`cluster_${idx+1}`]=buildLocationGraphChain(location,items);});
+  return chains;
+}
+function rebuildGraphData(){
+  liveGraphChains=buildLiveGraphChains(allArticles);
+  const ids=Object.keys(liveGraphChains);
+  if(ids.length&&!liveGraphChains[activeChain]) activeChain=ids[0];
+  buildChainButtons();
+  if(document.getElementById('tb-graph')?.classList.contains('active')) renderGraphPanel();
+  if(document.getElementById('graph-overlay')?.style.display==='flex') requestAnimationFrame(()=>renderGraphChain(activeChain));
+}
+function buildChainButtons(){
+  const el=document.getElementById('chain-btns');
+  if(!el) return;
+  const entries=Object.entries(liveGraphChains);
+  el.innerHTML=entries.map(([k,v])=>`<button class="graph-chain-btn${k===activeChain?' active':''}" onclick="initGraph('${k}')">${escHtml(v.label)}</button>`).join('');
+}
+function initGraph(chainId){
+  if(chainId&&liveGraphChains[chainId]) activeChain=chainId;
+  buildChainButtons();
+  renderGraphChain(activeChain);
+}
+function renderGraphChain(chainId){
+  const chain=liveGraphChains[chainId], container=document.getElementById('graph-container'), detailBox=document.getElementById('graph-node-detail');
+  if(detailBox) detailBox.style.display='none';
+  if(!container) return;
+  if(!chain||!chain.nodes?.length){ container.innerHTML=`<div class="loading-msg" style="height:100%;display:flex;align-items:center;justify-content:center">Loading live graph from API feeds…</div>`; return; }
+  const W=container.offsetWidth||800, H=container.offsetHeight||500;
+  if(W<50||H<50){ requestAnimationFrame(()=>renderGraphChain(chainId)); return; }
+  const outMap={}, inCount={};
+  chain.nodes.forEach(n=>{outMap[n.id]=[];inCount[n.id]=0;});
+  chain.edges.forEach(e=>{outMap[e.from].push(e.to);inCount[e.to]=(inCount[e.to]||0)+1;});
+  const col={}, queue=chain.nodes.filter(n=>!inCount[n.id]).map(n=>n.id);
+  if(!queue.length) queue.push(chain.nodes[0].id);
+  queue.forEach(id=>col[id]=0);
+  for(let h=0;h<queue.length;h++){ const id=queue[h]; (outMap[id]||[]).forEach(to=>{ const nc=(col[id]||0)+1; if(col[to]===undefined||nc>col[to]){ col[to]=nc; queue.push(to); } }); }
+  chain.nodes.forEach(n=>{ if(col[n.id]===undefined) col[n.id]=0; });
+  const maxCol=Math.max(...Object.values(col),0), byCol={};
+  for(let c=0;c<=maxCol;c++) byCol[c]=[];
+  chain.nodes.forEach(n=>byCol[col[n.id]].push(n));
+  const NW=126, NH=42, PX=70, PY=50, usableW=W-PX*2, usableH=H-PY*2, colStep=maxCol>0?usableW/maxCol:0, pos={};
+  for(let c=0;c<=maxCol;c++){ const ns=byCol[c]; ns.forEach((n,i)=>{ pos[n.id]={x:PX+c*colStep,y:PY+(i+0.5)*(usableH/ns.length)}; }); }
+  const defs=Object.entries(GRAPH_COLORS).map(([g,col])=>`<marker id="ar-${g}" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L0,7 L7,3.5 z" fill="${col}" opacity="0.75"/></marker>`).join('');
+  const edgeSvg=chain.edges.map(e=>{ const p1=pos[e.from], p2=pos[e.to]; if(!p1||!p2) return ''; const grp=chain.nodes.find(n=>n.id===e.from)?.group||'conflict', c=GRAPH_COLORS[grp], x1=p1.x+NW/2, y1=p1.y, x2=p2.x-NW/2-6, y2=p2.y, mx=(x1+x2)/2; return `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" stroke="${c}" stroke-width="1.4" fill="none" opacity="0.45" marker-end="url(#ar-${grp})"/><text x="${mx}" y="${(y1+y2)/2-5}" text-anchor="middle" font-size="8.5" fill="#6b7280" font-family="'Segoe UI',system-ui,sans-serif">${escHtml(e.label||'')}</text>`; }).join('');
+  const nodeSvg=chain.nodes.map(n=>{ const p=pos[n.id]; if(!p) return ''; const c=GRAPH_COLORS[n.group]||'#888', lines=String(n.label||'').split('\n'), lh=13, ty=p.y-(lines.length-1)*lh/2; return `<g class="graph-node" data-nid="${n.id}" style="cursor:pointer"><rect x="${p.x-NW/2}" y="${p.y-NH/2}" width="${NW}" height="${NH}" rx="7" fill="${c}1a" stroke="${c}" stroke-width="1.5" class="gnrect"/>${lines.map((l,i)=>`<text x="${p.x}" y="${ty+i*lh}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="600" fill="${c}" font-family="'Segoe UI',system-ui,sans-serif">${escHtml(l)}</text>`).join('')}</g>`; }).join('');
+  container.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%;display:block;background:var(--bg0)"><defs>${defs}</defs>${edgeSvg}${nodeSvg}</svg>`;
+  container.querySelectorAll('.graph-node').forEach(el=>{
+    const node=chain.nodes.find(n=>n.id===+el.dataset.nid), c=GRAPH_COLORS[node?.group]||'#888', rect=el.querySelector('.gnrect');
+    rect.addEventListener('mouseenter',()=>rect.setAttribute('fill',c+'40'));
+    rect.addEventListener('mouseleave',()=>rect.setAttribute('fill',c+'1a'));
+    el.addEventListener('click',()=>{
+      const node=chain.nodes.find(n=>n.id===+el.dataset.nid);
+      if(!node) return;
+      const tc={conflict:'var(--red)',supply:'var(--orange)',economic:'var(--amber)',humanitarian:'var(--purple)',political:'var(--blue)',sanction:'var(--cyan)'};
+      document.getElementById('gnd-type').textContent=node.group.toUpperCase();
+      document.getElementById('gnd-type').style.color=tc[node.group]||'var(--t2)';
+      document.getElementById('gnd-title').textContent=String(node.label||'').replace(/\n/g,' ');
+      document.getElementById('gnd-detail').textContent=node.title||'';
+      document.getElementById('graph-node-detail').style.display='block';
+    });
+  });
+}
+function renderGraphPanel(){
+  const el=document.getElementById('graph-panel');
+  if(!el) return;
+  const entries=Object.entries(liveGraphChains);
+  if(!entries.length){ el.innerHTML=`<div class="loading-msg"><div class="spin"></div>Building live graph from current news feed…</div>`; return; }
+  el.innerHTML=`<div class="shortage-hero"><div class="shortage-title">⬡ Live World News Graph</div><div style="font-size:10px;color:var(--t2);line-height:1.6;margin-bottom:8px">This graph is rebuilt from live API-fed articles instead of fixed scenarios, so the clusters update as new world news arrives.</div><div style="font-size:9px;color:var(--t3)">${allArticles.length} articles loaded · choose a cluster below to open the graph over the map</div></div>${entries.map(([k,v])=>{const statLine=[v.stats?.articles?`${v.stats.articles} articles`:null,v.stats?.sources?`${v.stats.sources} sources`:null,v.stats?.regions?`${v.stats.regions} regions`:null,v.edges?.length?`${v.edges.length} links`:null].filter(Boolean).join(' · ');return `<div class="country-card" style="cursor:pointer" onclick="setTab('graph');setTimeout(()=>initGraph('${k}'),100)"><div class="cc-top"><span class="cc-name">${escHtml(v.label)}</span><span style="font-size:9px;color:var(--t3)">${escHtml(statLine)}</span></div><div style="font-size:9px;color:var(--t2);margin-top:2px">${escHtml(v.summary||'Live cluster')}</div></div>`;}).join('')}<div style="padding:6px 2px;font-size:9px;color:var(--t3);line-height:1.7"><strong style="color:var(--t2)">How to use:</strong> Click a cluster → graph opens over the map → click any node to inspect the story summary. Use “Back to Map” to return.</div>`;
+}
+
+// ════════════════════════════════════════════════
+// OSINT ATTACK MEDIA (GDELT-powered)
+// ════════════════════════════════════════════════
+function mkOsintIcon() {
+  return L.divIcon({
+    html:`<div style="font-size:16px;line-height:1;filter:drop-shadow(0 0 4px #f85149)">📹</div>`,
+    className:'', iconSize:[20,20], iconAnchor:[10,10]
+  });
+}
+
+async function searchOSINT() {
+  const q = (document.getElementById('osint-search').value.trim()) || 'drone missile attack';
+  const el = document.getElementById('osint-list');
+  el.innerHTML = '<div class="loading-msg"><div class="spin"></div>Querying GDELT media database…</div>';
+
+  // Ensure OSINT map layer button exists
+  if (!document.getElementById('mb-osint')) {
+    const mctrl = document.querySelector('.mctrl');
+    if (mctrl) {
+      const btn = document.createElement('button');
+      btn.className = 'mbtn';
+      btn.id = 'mb-osint';
+      btn.textContent = '📹 OSINT';
+      btn.onclick = toggleOsintLayer;
+      mctrl.appendChild(btn);
+    }
+  }
+
+  try {
+    const r = await fetch(`${API_BASE}/api/osint?query=${encodeURIComponent(q)}&limit=25`, {signal: AbortSignal.timeout(18000)});
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    renderOSINTResults(data.items || []);
+    plotOSINTOnMap(data.items || []);
+  } catch(e) {
+    el.innerHTML = `<div class="loading-msg" style="color:var(--red)">OSINT fetch failed: ${e.message}<br><small style="color:var(--t3)">Make sure the backend is running on port 8000.</small></div>`;
+  }
+}
+
+function renderOSINTResults(items) {
+  const el = document.getElementById('osint-list');
+  if (!items.length) {
+    el.innerHTML = '<div class="loading-msg" style="color:var(--t2)">No results. Try: "drone attack", "missile strike", "airstrikes Ukraine"…</div>';
+    return;
+  }
+  const geoCount = items.filter(it => it.lat && it.lon).length;
+  el.innerHTML = `<div style="padding:3px 2px 6px;font-size:9px;color:var(--t3)">${items.length} articles found · ${geoCount} geolocated on map</div>` +
+    items.map(it => {
+      const hasGeo = it.lat && it.lon;
+      const thumb = it.image_url
+        ? `<img class="osint-thumb" src="${it.image_url}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=osint-thumb-ph>📰</div>'">`
+        : `<div class="osint-thumb-ph">📰</div>`;
+      const geoBtn = hasGeo
+        ? `<span class="osint-geo" onclick="event.stopPropagation();map.flyTo([${it.lat},${it.lon}],9);setTab('news')">📍 Map</span>`
+        : '';
+      const dateStr = it.date ? it.date.slice(0,8).replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3') : '';
+      return `<div class="osint-card" onclick="window.open('${it.url}','_blank','noopener')">
+        ${thumb}
+        <div class="osint-info">
+          <div class="osint-title">${it.title || 'Untitled article'}</div>
+          <div class="osint-meta">
+            <span>${it.source || 'Unknown'}</span>
+            ${it.country ? `<span>${it.country}</span>` : ''}
+            ${dateStr ? `<span>${dateStr}</span>` : ''}
+            ${geoBtn}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+function plotOSINTOnMap(items) {
+  layerGroups.osint.clearLayers();
+  items.filter(it => it.lat && it.lon).forEach(it => {
+    const dateStr = it.date ? it.date.slice(0,8).replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3') : '';
+    L.marker([it.lat, it.lon], {icon: mkOsintIcon()})
+      .bindPopup(`<div class="pu-type" style="color:var(--red)">📹 OSINT MEDIA</div>
+        <div class="pu-title">${it.title || 'Untitled'}</div>
+        <div class="pu-row">${it.source || ''} · ${it.country || ''} · ${dateStr}</div>
+        <a class="pu-link" href="${it.url}" target="_blank" rel="noopener">View Source ↗</a>`)
+      .addTo(layerGroups.osint);
+  });
+  if (!map.hasLayer(layerGroups.osint)) map.addLayer(layerGroups.osint);
+  const btn = document.getElementById('mb-osint');
+  if (btn) { btn.classList.add('layer-on'); btn.textContent = '📹 OSINT ON'; }
+}
+
+function toggleOsintLayer() {
+  const btn = document.getElementById('mb-osint');
+  if (map.hasLayer(layerGroups.osint)) {
+    map.removeLayer(layerGroups.osint);
+    if (btn) { btn.classList.remove('layer-on'); btn.textContent = '📹 OSINT'; }
+  } else {
+    map.addLayer(layerGroups.osint);
+    if (btn) { btn.classList.add('layer-on'); btn.textContent = '📹 OSINT ON'; }
+  }
+}
+
+// ════════════════════════════════════════════════
+// SANCTIONS TRACKER
+// ════════════════════════════════════════════════
+const SANCTIONS_DATA = [
+  {name:'Russia',cc:'RU',scope:'COMP',since:'2014 / 2022',type:'Ukraine invasion & Crimea annexation',impact:84,
+   by:['🇺🇸 US','🇪🇺 EU','🇬🇧 UK','🇯🇵 JP','🇨🇦 CA','🇦🇺 AU','🇰🇷 KR'],
+   measures:['$300B central bank reserves frozen','SWIFT removal (major banks)','Oil price cap $60/bbl (G7+EU)','Defense & dual-use tech export ban','1,600+ individuals travel-banned & asset-frozen'],
+   workarounds:['Shadow fleet (600+ tankers, no Western insurance)','India/China purchase Russian crude at $10–15 discount','Turkey & UAE re-export Western goods','SPFS payment system replaces SWIFT internally']},
+  {name:'Iran',cc:'IR',scope:'COMP',since:'2006 / 2018 (JCPOA exit)',type:'Nuclear program & IRGC terrorism designation',impact:79,
+   by:['🇺🇸 US','🇪🇺 EU','🇬🇧 UK','🇺🇳 UN'],
+   measures:['Oil exports cut 6M → ~1.5M bpd','$700B+ assets frozen globally','SWIFT removal (2012, 2018)','JCPOA nuclear deal collapsed 2018','Arms embargo & missile tech ban'],
+   workarounds:['China buys 1M+ bpd via ghost tankers','100+ tankers with disabled AIS, falsified flags','Ship-to-ship transfer off Malaysian coast','Syria & Venezuela oil swap networks']},
+  {name:'North Korea',cc:'KP',scope:'COMP',since:'2006 (post-nuclear tests)',type:'Nuclear weapons & ICBM program',impact:93,
+   by:['🇺🇸 US','🇺🇳 UN','🇪🇺 EU','🇯🇵 JP','🇰🇷 KR'],
+   measures:['Total arms embargo','Oil imports capped at 500K bbl/year','Coal, iron, seafood export ban','Luxury goods import embargo','Near-total financial system isolation'],
+   workarounds:['China border trade (90% of DPRK trade)','Ship-to-ship oil transfers at sea','Crypto theft — $3B+ stolen since 2017 (Lazarus Group)','Russia military cooperation for weapons/tech']},
+  {name:'Belarus',cc:'BY',scope:'TARG',since:'2020 / 2022',type:'Election fraud & support of Russian invasion',impact:56,
+   by:['🇺🇸 US','🇪🇺 EU','🇬🇧 UK'],
+   measures:['Potash / fertilizer export ban (major revenue loss)','Aviation airspace restrictions','Key Lukashenko officials travel banned','SWIFT partial removal'],
+   workarounds:['Russia provides economic lifeline ($3B+ support)','Potash re-routed via Russian Baltic ports','Chinese investment bypass of Western finance']},
+  {name:'Venezuela',cc:'VE',scope:'SECT',since:'2017',type:'Democratic violations & human rights abuses',impact:68,
+   by:['🇺🇸 US','🇪🇺 EU'],
+   measures:['Oil sector sanctions (PDVSA restricted)','CITGO (US subsidiary) assets frozen','Gold & mineral export sanctions','Financial sector restricted'],
+   workarounds:['Iran oil-for-fuel swap programs','China & Russia credit lines outside SWIFT','Cryptocurrency evasion (Petro token)','Chevron OFAC waiver (limited operations)']},
+  {name:'Syria',cc:'SY',scope:'COMP',since:'2011 (civil war)',type:'Civilian atrocities, chemical weapons use',impact:88,
+   by:['🇺🇸 US','🇪🇺 EU','🇬🇧 UK','🇺🇳 UN'],
+   measures:['Full oil & gas sector embargo','Caesar Act secondary sanctions (2020)','Complete financial system isolation','Arms embargo','Reconstruction investment blocked'],
+   workarounds:['Russia & Iran provide political & military support','UAE & Arab League normalization (2023)','Captagon drug trade finances Assad regime']},
+  {name:'Myanmar',cc:'MM',scope:'TARG',since:'2021 (military coup)',type:'Military coup & civilian massacres',impact:42,
+   by:['🇺🇸 US','🇪🇺 EU','🇬🇧 UK'],
+   measures:['Military generals & junta entities targeted','Jade & gem import ban (key revenue)','Military equipment & arms embargo','State bank transactions restricted'],
+   workarounds:['China continues trade & infrastructure investment','Russia supplies weapons & jet fuel','ASEAN non-interference policy limits regional pressure']},
+];
+
+function renderSanctions() {
+  const el = document.getElementById('sanctions-panel');
+  if (!el) return;
+  const scopeLabel = {COMP:'COMPREHENSIVE',SECT:'SECTORAL',TARG:'TARGETED',BROAD:'BROAD'};
+  const scopeClass = {COMP:'scope-comp',SECT:'scope-sect',TARG:'scope-targ',BROAD:'scope-broad'};
+  el.innerHTML = `
+    <div class="shortage-hero">
+      <div class="shortage-title">🔒 Active Sanctions Regimes</div>
+      <div style="font-size:9px;color:var(--t2);line-height:1.5">Major sanctions by US OFAC, EU Council, UN Security Council, and UK OFSI. Impact score = estimated economic disruption severity.</div>
+    </div>
+    ${SANCTIONS_DATA.map(s => {
+      const impCol = s.impact > 75 ? 'var(--red)' : s.impact > 50 ? 'var(--amber)' : 'var(--green)';
+      return `<div class="sanction-card">
+        <div class="sanction-top">
+          <span class="sanction-name"><span style="font-size:15px">${flagFromCountry(s.cc)}</span>${s.name}</span>
+          <span class="sanction-scope ${scopeClass[s.scope]||'scope-targ'}">${scopeLabel[s.scope]||s.scope}</span>
+        </div>
+        <div class="sanction-impact-bar"><div class="sanction-impact-fill" style="width:${s.impact}%;background:${impCol}"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--t3);margin-bottom:5px">
+          <span>Since: ${s.since}</span>
+          <span style="color:${impCol};font-weight:700">Impact: ${s.impact}/100</span>
+        </div>
+        <div style="font-size:9px;color:var(--t3);margin-bottom:4px">Reason: ${s.type}</div>
+        <div class="sanction-by">${s.by.map(b=>`<span class="sanc-by-tag">${b}</span>`).join('')}</div>
+        <div style="font-size:9px;color:var(--t2);font-weight:600;margin-bottom:2px">Key measures:</div>
+        <div class="sanction-measures">${s.measures.map(m=>`• ${m}`).join('<br>')}</div>
+        <details style="margin-top:5px">
+          <summary style="font-size:9px;color:var(--t3);cursor:pointer">⚠ Known workarounds / evasion</summary>
+          <div class="sanction-workaround" style="margin-top:4px">${s.workarounds.map(w=>`⚠ ${w}`).join('<br>')}</div>
+        </details>
+      </div>`;
+    }).join('')}`;
+}
+
+// ════════════════════════════════════════════════
+// NEWS FRESHNESS BAR
+// ════════════════════════════════════════════════
+let _lastFetchedAt='';
+
+function updateFreshnessBar(data){
+  const fetchedAt=data.fetched_at||'';
+  if(fetchedAt) _lastFetchedAt=fetchedAt;
+  const badge=document.getElementById('fresh-fetch-badge');
+  const srcOk=document.getElementById('fresh-src-ok');
+  const srcRow=document.getElementById('src-health-row');
+  if(!badge) return;
+  // age since data was fetched from sources
+  const age=_lastFetchedAt?(Date.now()-new Date(_lastFetchedAt).getTime())/1000:null;
+  if(age===null){
+    badge.textContent='–'; badge.className='fbadge';
+  } else if(age<90){
+    badge.textContent=`LIVE · ${Math.round(age)}s ago`; badge.className='fbadge live';
+  } else if(age<300){
+    badge.textContent=`${Math.round(age/60)}m ago`; badge.className='fbadge stale';
+  } else {
+    badge.textContent=`STALE · ${Math.round(age/60)}m`; badge.className='fbadge err';
+  }
+  // source health counts
+  const srcs=Object.values(sourceStatus||{});
+  if(srcs.length){
+    const ok=srcs.filter(s=>s.ok).length, bad=srcs.length-ok;
+    srcOk.textContent=`${ok}/${srcs.length} sources ok`;
+    srcRow.innerHTML=(bad>0?`<span class="fbadge err">${bad} failed</span>`:'<span class="fbadge live">all ok</span>')+
+      `<span style="font-size:8px;color:var(--t3)">${data.count||0} articles</span>`;
+  }
 }
 
 // ════════════════════════════════════════════════
